@@ -2,7 +2,7 @@ import { Cron } from "croner";
 import { addDays, format, subSeconds } from "date-fns";
 import fetch from "node-fetch";
 
-import { sendPushNotification } from "./push-notification.js";
+import { sendPushNotification } from "../../shared/push-notification.js";
 import { scheduleClasses } from "../data/schedule.js";
 import config from "../data/config.js";
 const {

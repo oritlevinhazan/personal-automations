@@ -28,4 +28,4 @@ jobs:
           ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
           ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
           SKIP_WAIT: ${{ github.event.inputs.skip_wait || 'false' }}
-        run: node app.js
+        run: node arbox/app.js

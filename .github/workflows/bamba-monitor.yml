@@ -24,4 +24,4 @@ jobs:
       - name: Check Bamba availability
         env:
           ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
-        run: node bamba-monitor.js
+        run: node bamba/bamba-monitor.js

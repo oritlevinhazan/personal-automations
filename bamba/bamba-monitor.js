@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import fetch from "node-fetch";
-import { sendPushNotification } from "./lib/push-notification.js";
+import { sendPushNotification } from "../shared/push-notification.js";
 
 const BOOKON_API = "https://bookon-bamba-b2c-api.azurewebsites.net";
 const REFERRAL = "9F9A43B0-F415-4E03-BA8A-9C76805FE802";

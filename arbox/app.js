@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { createEnrollmentJobs, envokeJobs } from "./lib/arbox.js";
-import { sendPushNotification } from "./lib/push-notification.js";
+import { sendPushNotification } from "../shared/push-notification.js";
 import config from "./data/config.js";
 
 const { alertzyAccountKey } = config;
