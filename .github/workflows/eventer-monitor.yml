@@ -1,0 +1,30 @@
+name: Eventer Ticket Monitor
+
+on:
+  schedule:
+    - cron: '0 5 * * *'    # 08:00 Israel time
+    - cron: '0 8 * * *'    # 11:00 Israel time
+    - cron: '0 11 * * *'   # 14:00 Israel time
+    - cron: '0 14 * * *'   # 17:00 Israel time
+    - cron: '0 17 * * *'   # 20:00 Israel time
+    - cron: '0 19 * * *'   # 22:00 Israel time
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check ticket availability
+        env:
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+        run: node eventer/eventer-monitor.js
