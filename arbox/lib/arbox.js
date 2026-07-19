@@ -97,6 +97,7 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 	);
 
 	const daysWithJobs = new Set();
+	const daysFullyBooked = new Set();
 
 	for (const classObj of schedule) {
 		const dayData = scheduleByDay[classObj.dayOfWeek];
@@ -121,10 +122,17 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 			continue;
 		}
 
-		console.log("[DEBUG] matched class sample:", JSON.stringify(optionalClasses[0], null, 2));
-		let selected_class = optionalClasses[0];
+		// filter out full classes
+		const availableClasses = optionalClasses.filter(c => c.free > 0);
+		if (availableClasses.length === 0) {
+			console.log(`Class full at ${classObj.start_time} (${classObj.class_name})`);
+			daysFullyBooked.add(classObj.dayOfWeek);
+			continue;
+		}
+
+		let selected_class = availableClasses[0];
 		outer: for (const coach of COACH_PRIORITIES) {
-			for (const currClass of optionalClasses) {
+			for (const currClass of availableClasses) {
 				if (currClass.coach && coach === currClass.coach.full_name) {
 					selected_class = currClass;
 					break outer;
@@ -144,7 +152,8 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 
 	return {
 		notPublished: uniqueDays.filter((d) => scheduleByDay[d]?.notPublished && !daysWithJobs.has(d)),
-		notFound: uniqueDays.filter((d) => !scheduleByDay[d] || (!scheduleByDay[d].notPublished && !daysWithJobs.has(d))),
+		full: uniqueDays.filter((d) => daysFullyBooked.has(d) && !daysWithJobs.has(d)),
+		notFound: uniqueDays.filter((d) => !scheduleByDay[d] || (!scheduleByDay[d].notPublished && !daysFullyBooked.has(d) && !daysWithJobs.has(d))),
 		missingDays: uniqueDays.filter((d) => !daysWithJobs.has(d)),
 	};
 };

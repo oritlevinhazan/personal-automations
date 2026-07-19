@@ -89,9 +89,11 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
 if (missingDays.length > 0) {
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
     const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
+    const fullNames = result.full.map(d => dayNames[d] || d).join(", ");
     const notFoundNames = result.notFound.map(d => dayNames[d] || d).join(", ");
     const lines = [];
     if (notPublishedNames) lines.push(`לוח זמנים עדיין לא פורסם: ${notPublishedNames}`);
+    if (fullNames) lines.push(`השיעורים מלאים: ${fullNames}`);
     if (notFoundNames) lines.push(`שיעורים לא נמצאו: ${notFoundNames}`);
     if (alertzyAccountKey) {
         await sendPushNotification(alertzyAccountKey, "❌ הרישום נכשל", lines.join("\n") + "\nהירשמי ידנית!");
