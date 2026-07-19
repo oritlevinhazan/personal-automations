@@ -42,7 +42,6 @@ if (!SKIP_WAIT) {
 
 console.log("Preparing jobs...");
 let result = await createEnrollmentJobs();
-let missingDays = result.missingDays;
 
 if (!SKIP_WAIT) {
     const msToRegister = getMillisUntil(REGISTER_TIME);
@@ -55,18 +54,20 @@ if (!SKIP_WAIT) {
 console.log("Enrolling...");
 await envokeJobs(DRY_RUN);
 
-// Retry for days where no classes were found
+// Only retry days where schedule wasn't published yet (not full classes — retrying won't help)
+let daysToRetry = result.notPublished;
+
 for (let i = 0; i < RETRY_TIMES.length; i++) {
-    if (missingDays.length === 0) break;
+    if (daysToRetry.length === 0) break;
 
     const retryTime = RETRY_TIMES[i];
     const nextRetryTime = RETRY_TIMES[i + 1];
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
-    const missingDayNames = missingDays.map(d => dayNames[d] || d).join(", ");
+    const retryDayNames = daysToRetry.map(d => dayNames[d] || d).join(", ");
 
     const retryMsg = nextRetryTime
-        ? `לא נמצאו שיעורים לימים: ${missingDayNames}\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
-        : `לא נמצאו שיעורים לימים: ${missingDayNames}\nניסיון אחרון - אם לא יצליח, הירשמי ידנית!`;
+        ? `לוח זמנים עדיין לא פורסם לימים: ${retryDayNames}\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
+        : `לוח זמנים עדיין לא פורסם לימים: ${retryDayNames}\nניסיון אחרון - אם לא יצליח, הירשמי ידנית!`;
 
     if (alertzyAccountKey) {
         await sendPushNotification(alertzyAccountKey, "⏳ מנסה שוב...", retryMsg);
@@ -75,18 +76,18 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
     if (!SKIP_WAIT) {
         const msToRetry = getMillisUntil(retryTime);
         if (msToRetry > 0) {
-            console.log(`Waiting ${Math.round(msToRetry / 1000)} seconds to retry for days: ${missingDayNames}...`);
+            console.log(`Waiting ${Math.round(msToRetry / 1000)} seconds to retry for days: ${retryDayNames}...`);
             await wait(msToRetry);
         }
     }
 
-    console.log(`Retrying for days: ${missingDayNames}...`);
-    result = await createEnrollmentJobs(missingDays);
-    missingDays = result.missingDays;
+    console.log(`Retrying for days: ${retryDayNames}...`);
+    result = await createEnrollmentJobs(daysToRetry);
+    daysToRetry = result.notPublished;
     await envokeJobs(DRY_RUN);
 }
 
-if (missingDays.length > 0) {
+if (result.missingDays.length > 0) {
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
     const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
     const fullNames = result.full.map(d => dayNames[d] || d).join(", ");
