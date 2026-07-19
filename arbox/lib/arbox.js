@@ -121,6 +121,7 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 			continue;
 		}
 
+		console.log("[DEBUG] matched class sample:", JSON.stringify(optionalClasses[0], null, 2));
 		let selected_class = optionalClasses[0];
 		outer: for (const coach of COACH_PRIORITIES) {
 			for (const currClass of optionalClasses) {
