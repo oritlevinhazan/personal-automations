@@ -30,6 +30,7 @@ const REGISTER_TIME = process.env.REGISTER_TIME || "16:00:10";
 const RETRY_TIMES = ["16:02:00", "16:05:00"];
 const PREPARE_SECONDS = 300;
 const SKIP_WAIT = process.env.SKIP_WAIT === "true";
+const DRY_RUN = process.env.DRY_RUN === "true";
 
 if (!SKIP_WAIT) {
     const ms = getMillisUntil(REGISTER_TIME) - PREPARE_SECONDS * 1000;
@@ -51,7 +52,7 @@ if (!SKIP_WAIT) {
 }
 
 console.log("Enrolling...");
-await envokeJobs(false);
+await envokeJobs(DRY_RUN);
 
 // Retry for days where no classes were found
 for (let i = 0; i < RETRY_TIMES.length; i++) {
@@ -80,7 +81,7 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
 
     console.log(`Retrying for days: ${missingDayNames}...`);
     missingDays = await createEnrollmentJobs(missingDays);
-    await envokeJobs(false);
+    await envokeJobs(DRY_RUN);
 }
 
 if (missingDays.length > 0) {
