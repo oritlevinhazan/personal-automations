@@ -41,7 +41,8 @@ if (!SKIP_WAIT) {
 }
 
 console.log("Preparing jobs...");
-let missingDays = await createEnrollmentJobs();
+let result = await createEnrollmentJobs();
+let missingDays = result.missingDays;
 
 if (!SKIP_WAIT) {
     const msToRegister = getMillisUntil(REGISTER_TIME);
@@ -80,15 +81,20 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
     }
 
     console.log(`Retrying for days: ${missingDayNames}...`);
-    missingDays = await createEnrollmentJobs(missingDays);
+    result = await createEnrollmentJobs(missingDays);
+    missingDays = result.missingDays;
     await envokeJobs(DRY_RUN);
 }
 
 if (missingDays.length > 0) {
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
-    const missingDayNames = missingDays.map(d => dayNames[d] || d).join(", ");
+    const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
+    const notFoundNames = result.notFound.map(d => dayNames[d] || d).join(", ");
+    const lines = [];
+    if (notPublishedNames) lines.push(`לוח זמנים עדיין לא פורסם: ${notPublishedNames}`);
+    if (notFoundNames) lines.push(`שיעורים לא נמצאו: ${notFoundNames}`);
     if (alertzyAccountKey) {
-        await sendPushNotification(alertzyAccountKey, "❌ הרישום נכשל", `לא נמצאו שיעורים לימים: ${missingDayNames}\nהירשמי ידנית!`);
+        await sendPushNotification(alertzyAccountKey, "❌ הרישום נכשל", lines.join("\n") + "\nהירשמי ידנית!");
     }
 }
 

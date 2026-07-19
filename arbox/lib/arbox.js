@@ -85,10 +85,13 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 		uniqueDays.map(async (day) => {
 			const date = getNextDateForDay(day);
 			const boxSchedule = await getArboxScheduleByDate(date);
-			if (!boxSchedule) {
+			if (boxSchedule === null || boxSchedule === undefined) {
 				console.log("Could not fetch schedule for " + date);
+			} else if (boxSchedule.length === 0) {
+				console.log("Schedule not published yet for " + date);
+				scheduleByDay[day] = { date, boxSchedule, notPublished: true };
 			} else {
-				scheduleByDay[day] = { date, boxSchedule };
+				scheduleByDay[day] = { date, boxSchedule, notPublished: false };
 			}
 		})
 	);
@@ -138,7 +141,11 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 		daysWithJobs.add(classObj.dayOfWeek);
 	}
 
-	return uniqueDays.filter((d) => !daysWithJobs.has(d));
+	return {
+		notPublished: uniqueDays.filter((d) => scheduleByDay[d]?.notPublished && !daysWithJobs.has(d)),
+		notFound: uniqueDays.filter((d) => !scheduleByDay[d] || (!scheduleByDay[d].notPublished && !daysWithJobs.has(d))),
+		missingDays: uniqueDays.filter((d) => !daysWithJobs.has(d)),
+	};
 };
 
 const getBoxLocationsIdFirst = async (token) => {
