@@ -54,8 +54,8 @@ if (!SKIP_WAIT) {
 console.log("Enrolling...");
 await envokeJobs(DRY_RUN);
 
-// Only retry days where schedule wasn't published yet (not full classes — retrying won't help)
-let daysToRetry = result.notPublished;
+// Retry days where schedule wasn't published yet, or classes weren't found (may appear shortly after 16:00)
+let daysToRetry = [...new Set([...result.notPublished, ...result.notFound])];
 
 for (let i = 0; i < RETRY_TIMES.length; i++) {
     if (daysToRetry.length === 0) break;
@@ -66,8 +66,8 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
     const retryDayNames = daysToRetry.map(d => dayNames[d] || d).join(", ");
 
     const retryMsg = nextRetryTime
-        ? `לוח זמנים עדיין לא פורסם לימים: ${retryDayNames}\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
-        : `לוח זמנים עדיין לא פורסם לימים: ${retryDayNames}\nניסיון אחרון - אם לא יצליח, הירשמי ידנית!`;
+        ? `לא נמצאו שיעורים לימים: ${retryDayNames}\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
+        : `לא נמצאו שיעורים לימים: ${retryDayNames}\nניסיון אחרון - אם לא יצליח, הירשמי ידנית!`;
 
     if (alertzyAccountKey) {
         await sendPushNotification(alertzyAccountKey, "⏳ מנסה שוב...", retryMsg);
@@ -83,7 +83,7 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
 
     console.log(`Retrying for days: ${retryDayNames}...`);
     result = await createEnrollmentJobs(daysToRetry);
-    daysToRetry = result.notPublished;
+    daysToRetry = [...new Set([...result.notPublished, ...result.notFound])];
     await envokeJobs(DRY_RUN);
 }
 
