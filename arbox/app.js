@@ -65,9 +65,16 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
     const retryDayNames = daysToRetry.map(d => dayNames[d] || d).join(", ");
 
+    const retryLines = [];
+    const notPublishedNames = result.notPublished.filter(d => daysToRetry.includes(d)).map(d => dayNames[d] || d).join(", ");
+    const fullNames = result.full.filter(d => daysToRetry.includes(d)).map(d => dayNames[d] || d).join(", ");
+    const notFoundNames = result.notFound.filter(d => daysToRetry.includes(d)).map(d => dayNames[d] || d).join(", ");
+    if (notPublishedNames) retryLines.push(`לוח זמנים לא פורסם: ${notPublishedNames}`);
+    if (fullNames) retryLines.push(`שיעורים מלאים: ${fullNames}`);
+    if (notFoundNames) retryLines.push(`שיעורים לא נמצאו: ${notFoundNames}`);
     const retryMsg = nextRetryTime
-        ? `לא נמצאו שיעורים לימים: ${retryDayNames}\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
-        : `לא נמצאו שיעורים לימים: ${retryDayNames}\nניסיון אחרון - אם לא יצליח, הירשמי ידנית!`;
+        ? retryLines.join("\n") + `\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
+        : retryLines.join("\n") + `\nניסיון אחרון - אם לא יצליח, הירשמי ידנית!`;
 
     if (alertzyAccountKey) {
         await sendPushNotification(alertzyAccountKey, "⏳ מנסה שוב...", retryMsg);
