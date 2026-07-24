@@ -109,7 +109,7 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 		for (const boxClass of boxSchedule) {
 			if (
 				boxClass.time === classObj.start_time &&
-				boxClass.box_categories.name.trim() === classObj.class_name
+				boxClass.box_categories.name.trim().toLowerCase().includes(classObj.class_name.toLowerCase())
 			) {
 				optionalClasses.push(boxClass);
 			}
