@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { createEnrollmentJobs, envokeJobs, envokeStandbyJobs } from "./lib/arbox.js";
+import { createEnrollmentJobs, envokeJobs } from "./lib/arbox.js";
 import { sendPushNotification } from "../shared/push-notification.js";
 import config from "./data/config.js";
 
@@ -53,7 +53,6 @@ if (!SKIP_WAIT) {
 
 console.log("Enrolling...");
 await envokeJobs(DRY_RUN);
-await envokeStandbyJobs(DRY_RUN);
 
 // Retry only if schedule wasn't published yet — full/not-found don't benefit from retrying
 let daysToRetry = [...new Set([...result.notPublished])];
@@ -93,18 +92,19 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
     result = await createEnrollmentJobs(daysToRetry);
     daysToRetry = [...new Set([...result.notPublished])];
     await envokeJobs(DRY_RUN);
-    await envokeStandbyJobs(DRY_RUN);
 }
 
 if (result.missingDays.length > 0) {
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
     const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
+    const fullNames = result.full.map(d => dayNames[d] || d).join(", ");
     const notFoundNames = result.notFound.map(d => dayNames[d] || d).join(", ");
     const lines = [];
     if (notPublishedNames) lines.push(`לוח זמנים עדיין לא פורסם: ${notPublishedNames}`);
+    if (fullNames) lines.push(`השיעורים מלאים — הירשמי ידנית להמתנה: ${fullNames}`);
     if (notFoundNames) lines.push(`שיעורים לא נמצאו: ${notFoundNames}`);
     if (lines.length > 0 && alertzyAccountKey) {
-        await sendPushNotification(alertzyAccountKey, "❌ הרישום נכשל", lines.join("\n") + "\nהירשמי ידנית!");
+        await sendPushNotification(alertzyAccountKey, "❌ הרישום נכשל", lines.join("\n"));
     }
 }
 
