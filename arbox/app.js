@@ -54,8 +54,8 @@ if (!SKIP_WAIT) {
 console.log("Enrolling...");
 await envokeJobs(DRY_RUN);
 
-// Retry days where schedule wasn't published yet, or classes weren't found (may appear shortly after 16:00)
-let daysToRetry = [...new Set([...result.notPublished, ...result.notFound])];
+// Retry all missing days: not published yet, not found, or full (spot may open up)
+let daysToRetry = [...new Set([...result.notPublished, ...result.notFound, ...result.full])];
 
 for (let i = 0; i < RETRY_TIMES.length; i++) {
     if (daysToRetry.length === 0) break;
@@ -83,7 +83,7 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
 
     console.log(`Retrying for days: ${retryDayNames}...`);
     result = await createEnrollmentJobs(daysToRetry);
-    daysToRetry = [...new Set([...result.notPublished, ...result.notFound])];
+    daysToRetry = [...new Set([...result.notPublished, ...result.notFound, ...result.full])];
     await envokeJobs(DRY_RUN);
 }
 
