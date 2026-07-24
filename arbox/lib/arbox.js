@@ -294,16 +294,6 @@ export const envokeJobs = async (dryRun = false) => {
 	}
 	emptyJobsList();
 
-	if (!dryRun && hadJobs && alertzyAccountKey) {
-		const title = succeeded.length > 0 ? "✅ נרשמת לשיעורים!" : "❌ הרישום נכשל";
-		const lines = [
-			...succeeded.map(s => `✅ ${s}`),
-			...failed.map(f => `❌ ${f}`),
-		];
-		const message = lines.join("\n") || "לא נמצאו שיעורים להרשמה";
-		await sendPushNotification(alertzyAccountKey, title, message);
-	}
-
 	return { succeeded, failed };
 };
 

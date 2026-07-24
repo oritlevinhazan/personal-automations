@@ -52,7 +52,12 @@ if (!SKIP_WAIT) {
 }
 
 console.log("Enrolling...");
-await envokeJobs(DRY_RUN);
+const allSucceeded = [];
+const allFailed = [];
+
+const enrollResult = await envokeJobs(DRY_RUN);
+allSucceeded.push(...enrollResult.succeeded);
+allFailed.push(...enrollResult.failed);
 
 // Retry only if schedule wasn't published yet — full/not-found don't benefit from retrying
 let daysToRetry = [...new Set([...result.notPublished])];
@@ -65,18 +70,10 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
     const retryDayNames = daysToRetry.map(d => dayNames[d] || d).join(", ");
 
-    const retryLines = [];
-    const notPublishedNames = result.notPublished.filter(d => daysToRetry.includes(d)).map(d => dayNames[d] || d).join(", ");
-    const fullNames = result.full.filter(d => daysToRetry.includes(d)).map(d => dayNames[d] || d).join(", ");
-    const notFoundNames = result.notFound.filter(d => daysToRetry.includes(d)).map(d => dayNames[d] || d).join(", ");
-    if (notPublishedNames) retryLines.push(`לוח זמנים לא פורסם: ${notPublishedNames}`);
-    if (fullNames) retryLines.push(`שיעורים מלאים: ${fullNames}`);
-    if (notFoundNames) retryLines.push(`שיעורים לא נמצאו: ${notFoundNames}`);
-    const retryMsg = nextRetryTime
-        ? retryLines.join("\n") + `\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
-        : retryLines.join("\n") + `\nניסיון אחרון - אם לא יצליח, הירשמי ידנית!`;
-
     if (alertzyAccountKey) {
+        const retryMsg = nextRetryTime
+            ? `לוח זמנים טרם פורסם: ${retryDayNames}\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
+            : `לוח זמנים טרם פורסם: ${retryDayNames}\nניסיון אחרון...`;
         await sendPushNotification(alertzyAccountKey, "⏳ מנסה שוב...", retryMsg);
     }
 
@@ -91,21 +88,29 @@ for (let i = 0; i < RETRY_TIMES.length; i++) {
     console.log(`Retrying for days: ${retryDayNames}...`);
     result = await createEnrollmentJobs(daysToRetry);
     daysToRetry = [...new Set([...result.notPublished])];
-    await envokeJobs(DRY_RUN);
+    const retryEnroll = await envokeJobs(DRY_RUN);
+    allSucceeded.push(...retryEnroll.succeeded);
+    allFailed.push(...retryEnroll.failed);
 }
 
-if (result.missingDays.length > 0) {
+// Send one consolidated final notification
+if (!DRY_RUN && alertzyAccountKey) {
     const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
-    const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
+    const lines = [];
+
+    for (const s of allSucceeded) lines.push(`✅ ${s}`);
+    for (const f of allFailed) lines.push(`❌ ${f}`);
+
     const fullNames = result.full.map(d => dayNames[d] || d).join(", ");
     const notFoundNames = result.notFound.map(d => dayNames[d] || d).join(", ");
-    const lines = [];
-    if (notPublishedNames) lines.push(`לוח זמנים עדיין לא פורסם: ${notPublishedNames}`);
-    if (fullNames) lines.push(`השיעורים מלאים — הירשמי ידנית להמתנה: ${fullNames}`);
-    if (notFoundNames) lines.push(`שיעורים לא נמצאו: ${notFoundNames}`);
-    if (lines.length > 0 && alertzyAccountKey) {
-        await sendPushNotification(alertzyAccountKey, "❌ הרישום נכשל", lines.join("\n"));
-    }
+    const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
+
+    if (fullNames) lines.push(`⏳ מלא — הירשמי ידנית להמתנה: ${fullNames}`);
+    if (notFoundNames) lines.push(`⚠️ שיעורים לא נמצאו: ${notFoundNames}`);
+    if (notPublishedNames) lines.push(`⚠️ לוח לא פורסם: ${notPublishedNames}`);
+
+    const title = allSucceeded.length > 0 ? "✅ הרישום הסתיים" : "❌ הרישום הסתיים";
+    await sendPushNotification(alertzyAccountKey, title, lines.join("\n") || "לא היו שיעורים לרישום");
 }
 
 console.log("Done!");
