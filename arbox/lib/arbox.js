@@ -117,7 +117,7 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 
 		if (optionalClasses.length === 0) {
 			console.log(
-				"no matching classes found for the time " + classObj.start_time
+				`no matching classes found for the time ${classObj.start_time} (looking for: "${classObj.class_name}", available: ${JSON.stringify(boxSchedule.filter(c => c.time === classObj.start_time).map(c => c.box_categories.name))})`
 			);
 			continue;
 		}
