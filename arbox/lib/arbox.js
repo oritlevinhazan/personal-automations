@@ -17,6 +17,7 @@ const {
 
 // global vars
 let jobs = [];
+let standbyJobs = [];
 
 let user = {
 	creds: {
@@ -122,10 +123,16 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 			continue;
 		}
 
-		// filter out full classes
+		// filter out full classes — if full and standby available, queue for standby
 		const availableClasses = optionalClasses.filter(c => c.free > 0);
 		if (availableClasses.length === 0) {
-			console.log(`Class full at ${classObj.start_time} (${classObj.class_name})`);
+			const standbyClass = optionalClasses.find(c => c.booking_option === "insertStandby");
+			if (standbyClass) {
+				console.log(`Class full at ${classObj.start_time} (${classObj.class_name}) — joining standby`);
+				addStandbyJob({ extras: null, membership_user_id: user.membership_id, schedule_id: standbyClass.id, workoutDetails: { ...classObj, date: nextDate } });
+			} else {
+				console.log(`Class full at ${classObj.start_time} (${classObj.class_name}) — no standby available`);
+			}
 			daysFullyBooked.add(classObj.dayOfWeek);
 			continue;
 		}
@@ -236,6 +243,68 @@ const addJob = (newJobData) => {
 
 const emptyJobsList = () => {
 	jobs = [];
+};
+
+const addStandbyJob = (newJobData) => {
+	for (const currJob of standbyJobs) {
+		if (currJob.membership_user_id === newJobData.membership_user_id && currJob.schedule_id === newJobData.schedule_id) {
+			return;
+		}
+	}
+	standbyJobs.push(newJobData);
+};
+
+const emptyStandbyJobsList = () => {
+	standbyJobs = [];
+};
+
+export const envokeStandbyJobs = async (dryRun = false) => {
+	const succeeded = [];
+	const failed = [];
+	const hadJobs = standbyJobs.length > 0;
+
+	for (const currJob of standbyJobs) {
+		if (dryRun) {
+			console.log(`[DRY RUN] Would join standby for [${currJob.workoutDetails.class_name}] at ${currJob.workoutDetails.start_time} on ${currJob.workoutDetails.date}`);
+			continue;
+		}
+		try {
+			const response = await fetch("https://apiappv2.arboxapp.com/api/v2/scheduleUser/insertStandby", {
+				method: "POST",
+				headers: {
+					Accept: "application/json, text/plain, */*",
+					"Content-Type": "application/json",
+					accesstoken: user.token,
+					refreshtoken: user.refreshToken,
+				},
+				body: JSON.stringify({ extras: currJob.extras, membership_user_id: currJob.membership_user_id, schedule_id: currJob.schedule_id }),
+			});
+			const responseData = await response.json();
+			const label = `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time} (${currJob.workoutDetails.date})`;
+
+			if (response.status === 200) {
+				console.log("Joined standby successfully! 🕐");
+				succeeded.push(label);
+			} else {
+				const rawReason = responseData.error?.messageToUser || responseData.message;
+				const reason = Array.isArray(rawReason) ? rawReason[0]?.message || JSON.stringify(rawReason[0]) : typeof rawReason === "string" ? rawReason : JSON.stringify(rawReason);
+				console.log(reason);
+				failed.push(`${label}: ${reason}`);
+			}
+		} catch (e) {
+			console.log("Issue with joining standby for class.");
+			failed.push(`${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time}: error`);
+		}
+	}
+	emptyStandbyJobsList();
+
+	if (!dryRun && hadJobs && alertzyAccountKey) {
+		const title = succeeded.length > 0 ? "⏳ נרשמת לרשימת המתנה!" : "❌ ההרשמה להמתנה נכשלה";
+		const lines = [...succeeded.map(s => `⏳ ${s}`), ...failed.map(f => `❌ ${f}`)];
+		await sendPushNotification(alertzyAccountKey, title, lines.join("\n") || "לא נמצאו שיעורים");
+	}
+
+	return { succeeded, failed };
 };
 
 export const envokeJobs = async (dryRun = false) => {
