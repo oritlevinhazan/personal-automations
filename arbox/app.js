@@ -54,6 +54,7 @@ if (!SKIP_WAIT) {
 console.log("Enrolling...");
 await envokeJobs(DRY_RUN);
 
+console.log("Result:", JSON.stringify(result));
 // Retry all missing days: not published yet, not found, or full (spot may open up)
 let daysToRetry = [...new Set([...result.notPublished, ...result.notFound, ...result.full])];
 
