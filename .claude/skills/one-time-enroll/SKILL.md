@@ -140,7 +140,21 @@ curl -s -X PUT "https://api.cron-job.org/jobs" \
   }'
 ```
 
-Note the returned `jobId` for each job — useful if you need to cancel or verify.
+Note the returned `jobId` for each job. **Immediately after creating each job, verify `nextExecution` is not null:**
+
+```bash
+source .env && curl -s "https://api.cron-job.org/jobs/<jobId>" \
+  -H "Authorization: Bearer $CRONJOB_API_KEY" | \
+  python3 -c "
+import sys, json, datetime
+d = json.load(sys.stdin)['jobDetails']
+nxt = d['nextExecution']
+print('enabled:', d['enabled'])
+print('nextExecution:', datetime.datetime.utcfromtimestamp(nxt).strftime('%Y-%m-%d %H:%M UTC') if nxt else 'NULL — job will never fire!')
+"
+```
+
+If `nextExecution` is `null`, the job is broken — delete it and recreate.
 
 > **Important:** Do NOT use `expiresAt` in the schedule object. It does not mean "fire once then delete" — it means "expire after N seconds", so `expiresAt: 1` causes the job to expire before it ever fires. To fire once, simply pin `mdays` + `months` to the exact date and manually delete the job afterward if needed.
 
