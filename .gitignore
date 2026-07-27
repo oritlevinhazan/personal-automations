@@ -4,3 +4,4 @@
 .env
 firebase-debug.log
 data/schedule.js
+.mcp.json
