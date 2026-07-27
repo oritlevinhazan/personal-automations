@@ -2,9 +2,7 @@ name: Bamba Tour Monitor
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # 08:00 Israel time
-    - cron: '0 11 * * *'  # 14:00 Israel time
-    - cron: '0 18 * * *'  # 21:00 Israel time
+    - cron: '0 * * * *'   # every hour
   workflow_dispatch:       # allow manual trigger for testing
 
 jobs:
