@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install *)",
+      "Bash(python scripts/scraper.py)",
+      "Bash(python3 -m pip install -r requirements.txt -q)",
+      "Bash(python3 scripts/scraper.py)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:apify.com)",
+      "Bash(curl -s -A 'Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' -H 'Accept: application/json' -H 'Referer: https://www.yad2.co.il/' 'https://gw.yad2.co.il/feed-search-legacy/realestate/forsale?city=8600&propertyGroup=houses&page=1&pageSize=5' -o /tmp/yad2_test.json -w '%{http_code}')",
+      "Bash(curl -s -A 'Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' -H 'Accept: application/json, text/plain, */*' -H 'Referer: https://www.yad2.co.il/' -H 'Accept-Language: he-IL,he;q=0.9' 'https://www.yad2.co.il/api/pre-load/getFeedIndex/realestate/forsale?city=8600&propertyGroup=houses' -o /tmp/yad2_test2.json -w '\\\\nSTATUS:%{http_code}')",
+      "Bash(curl -L -s -A 'Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/124.0.0.0 Safari/537.36' -H 'Accept-Language: he-IL,he;q=0.9' -H 'Accept: text/html,application/xhtml+xml' 'https://www.yad2.co.il/realestate/forsale?city=8600&propertyGroup=houses' -w '\\\\nSTATUS:%{http_code}')",
+      "Bash(python3 -m pip install playwright -q)",
+      "Bash(python3 -m playwright install chromium)"
+    ],
+    "additionalDirectories": [
+      "/Users/orit.levinhazan/tel-mond-houses/data",
+      "/Users/orit.levinhazan/tel-mond-houses/scripts",
+      "/Users/orit.levinhazan/tel-mond-houses/dashboard",
+      "/Users/orit.levinhazan/tel-mond-houses"
+    ]
+  }
+}
