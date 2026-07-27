@@ -1,11 +1,6 @@
 name: One-Time Tuesday Enrollment
 
 on:
-  schedule:
-    # 08:30 attempt: fires at 17:30 UTC = 20:30 Israel (UTC+3 summer)
-    - cron: '30 17 27 7 *'
-    # 09:30 fallback: fires at 18:30 UTC = 21:30 Israel
-    - cron: '30 18 27 7 *'
   workflow_dispatch:
     inputs:
       slot:
@@ -32,27 +27,26 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Determine slot from schedule or input
-        id: slot
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "slot=${{ github.event.inputs.slot }}" >> $GITHUB_OUTPUT
-          else
-            # Infer slot from the current UTC hour/minute
-            HOUR=$(date -u +%H)
-            MIN=$(date -u +%M)
-            if [ "$HOUR" = "17" ]; then
-              echo "slot=0830" >> $GITHUB_OUTPUT
-            else
-              echo "slot=0930" >> $GITHUB_OUTPUT
-            fi
-          fi
-
       - name: Run one-time Tuesday enrollment
         env:
           ARBOX_USER_EMAIL: ${{ secrets.ARBOX_USER_EMAIL }}
           ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
           ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
-          SLOT: ${{ steps.slot.outputs.slot }}
+          SLOT: ${{ github.event.inputs.slot }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         run: node arbox/one-time-tuesday.js
+
+      - name: Notify on crash
+        if: failure()
+        env:
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+        run: |
+          node -e "
+            import('../shared/push-notification.js').then(m =>
+              m.sendPushNotification(
+                process.env.ALERTZY_ACCOUNT_KEY,
+                '⚠️ שגיאה בסקריפט',
+                'הסקריפט קרס עבור סלוט ${{ github.event.inputs.slot }} — בדקי GitHub Actions'
+              )
+            )
+          "
