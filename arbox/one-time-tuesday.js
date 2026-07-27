@@ -95,7 +95,7 @@ console.log(`Target date: ${date}`);
 
 const schedule = await getSchedule(date, token, refreshToken);
 
-const isEnrolled = (cls) => cls?.schedule_user?.some(u => u.is_user === true);
+const isEnrolled = (cls) => cls?.schedule_user?.some(u => u.membership_user_fk === MEMBERSHIP_ID);
 
 // For the 09:30 slot: skip if already enrolled in 08:30, otherwise try 08:30 first
 if (SLOT === "0930") {

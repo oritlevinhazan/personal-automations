@@ -26,7 +26,7 @@ Key structure:
 - `TIME_MAP` maps slot codes to display times (`"0830" → "08:30"`)
 - Login, fetch schedule for the target date, find a strength/power class at the target time
 - If `SLOT` is the fallback slot:
-  1. Check `schedule_user.some(u => u.is_user === true)` on the primary slot — exit if already enrolled. **Do NOT use `booking_option === "cancelScheduleUser"`** — when the class is full, `booking_option` flips to `insertStandby` regardless of your enrollment status.
+  1. Check `schedule_user.some(u => u.membership_user_fk === MEMBERSHIP_ID)` on the primary slot — exit if already enrolled. **Do NOT use `booking_option === "cancelScheduleUser"`** (flips to `insertStandby` when full regardless of enrollment), and **do NOT use `is_user`** (it is `true` for every user in the list, not just the logged-in user).
   2. Check if the primary slot now has `free > 0` — grab it if so
   3. Only then try the fallback slot
 - Send a **separate Alertzy notification per attempt** (not one consolidated message)
@@ -104,7 +104,7 @@ source .env && SLOT=0930 DRY_RUN=true node arbox/one-time-<name>.js
 # Expected: "Already enrolled in 08:30 — skipping 09:30 attempt."
 ```
 
-Test 3 can only be verified after an actual enrollment. If you can't test it live, at minimum check that `schedule_user.some(u => u.is_user === true)` is the check being used (not `booking_option`).
+Test 3 can only be verified after an actual enrollment. If you can't test it live, at minimum check that `schedule_user.some(u => u.membership_user_fk === MEMBERSHIP_ID)` is the check being used (not `booking_option` or `is_user`).
 
 ### 4. Commit and push
 
