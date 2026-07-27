@@ -135,13 +135,14 @@ curl -s -X PUT "https://api.cron-job.org/jobs" \
         "timezone": "Asia/Jerusalem",
         "hours": [20], "minutes": [30],
         "mdays": [<day>], "months": [<month>], "wdays": [-1],
-        "expiresAt": 1
       }
     }
   }'
 ```
 
 Note the returned `jobId` for each job — useful if you need to cancel or verify.
+
+> **Important:** Do NOT use `expiresAt` in the schedule object. It does not mean "fire once then delete" — it means "expire after N seconds", so `expiresAt: 1` causes the job to expire before it ever fires. To fire once, simply pin `mdays` + `months` to the exact date and manually delete the job afterward if needed.
 
 ### 6. Verify jobs were created
 
