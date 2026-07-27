@@ -95,12 +95,25 @@ console.log(`Target date: ${date}`);
 
 const schedule = await getSchedule(date, token, refreshToken);
 
-// For the 09:30 slot: skip if already enrolled in 08:30
+// For the 09:30 slot: skip if already enrolled in 08:30, otherwise try 08:30 first
 if (SLOT === "0930") {
     const cls0830 = findClass(schedule, "08:30");
     if (cls0830?.booking_option === "cancelScheduleUser") {
         console.log("Already enrolled in 08:30 — skipping 09:30 attempt.");
         process.exit(0);
+    }
+    if (cls0830 && cls0830.free > 0) {
+        console.log("Spot opened in 08:30 — trying that first.");
+        const label0830 = `${cls0830.box_categories.name} 08:30 (${date})`;
+        const result0830 = await enroll(cls0830, token, refreshToken);
+        if (result0830.ok) {
+            console.log(`Enrolled in 08:30! ${label0830}`);
+            if (!DRY_RUN && ALERTZY_KEY) {
+                await sendPushNotification(ALERTZY_KEY, "✅ נרשמת!", `✅ ${label0830}`);
+            }
+            process.exit(0);
+        }
+        console.log("08:30 enrollment failed, falling through to 09:30...");
     }
 }
 
