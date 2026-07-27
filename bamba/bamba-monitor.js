@@ -6,7 +6,7 @@ import { sendPushNotification } from "../shared/push-notification.js";
 
 const BOOKON_API = "https://bookon-bamba-b2c-api.azurewebsites.net";
 const REFERRAL = "9F9A43B0-F415-4E03-BA8A-9C76805FE802";
-const MIN_SEATS = 2;
+const MIN_SEATS = 4;
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // only used in continuous mode
 const ALERTZY_KEY = process.env.ALERTZY_ACCOUNT_KEY;
 
@@ -79,7 +79,7 @@ async function poll() {
             await sendPushNotification(
                 ALERTZY_KEY,
                 "🔍 במבה מוניטור - בדיקה תקינה",
-                `נבדקו ${slots.length} תאריכים באוגוסט — אין מקום ל-2 איש כרגע`
+                `נבדקו ${slots.length} תאריכים באוגוסט — אין מקום ל-4 אנשים כרגע`
             );
         }
     }
