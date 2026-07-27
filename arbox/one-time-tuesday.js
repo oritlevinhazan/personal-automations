@@ -95,10 +95,12 @@ console.log(`Target date: ${date}`);
 
 const schedule = await getSchedule(date, token, refreshToken);
 
+const isEnrolled = (cls) => cls?.schedule_user?.some(u => u.is_user === true);
+
 // For the 09:30 slot: skip if already enrolled in 08:30, otherwise try 08:30 first
 if (SLOT === "0930") {
     const cls0830 = findClass(schedule, "08:30");
-    if (cls0830?.booking_option === "cancelScheduleUser") {
+    if (isEnrolled(cls0830)) {
         console.log("Already enrolled in 08:30 — skipping 09:30 attempt.");
         process.exit(0);
     }
