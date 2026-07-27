@@ -7,26 +7,18 @@ import { sendPushNotification } from "../shared/push-notification.js";
 const EMAIL = process.env.ARBOX_USER_EMAIL;
 const PASSWORD = process.env.ARBOX_USER_PASSWORD;
 const ALERTZY_KEY = process.env.ALERTZY_ACCOUNT_KEY;
-const SKIP_WAIT = process.env.SKIP_WAIT === "true";
 const DRY_RUN = process.env.DRY_RUN === "true";
+const SLOT = process.env.SLOT || "0830"; // "0830" or "0930"
 const MEMBERSHIP_ID = 13327706;
 const LOCATION_ID = 21697;
 const BASE_URL = "https://apiappv2.arboxapp.com/api/v2";
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-const getMillisUntil = (timeStr) => {
-    const [h, m, s] = timeStr.split(":").map(Number);
-    const now = new Date();
-    const israelTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
-    const target = new Date(israelTime);
-    target.setHours(h, m, s, 0);
-    if (target <= israelTime) {
-        if (israelTime - target < 10 * 60 * 1000) return 0;
-        target.setDate(target.getDate() + 1);
-    }
-    return target - israelTime;
-};
+const TIME_MAP = { "0830": "08:30", "0930": "09:30" };
+const targetTime = TIME_MAP[SLOT];
+if (!targetTime) {
+    console.error(`Unknown SLOT: ${SLOT}. Use 0830 or 0930.`);
+    process.exit(1);
+}
 
 const getNextTuesdayDate = () => {
     const now = new Date();
@@ -70,19 +62,15 @@ const getSchedule = async (date, token, refreshToken) => {
     return data.data || [];
 };
 
-const findClass = (schedule, time) => {
-    for (const cls of schedule) {
-        if (cls.time === time) {
-            const name = cls.box_categories?.name?.toLowerCase() || "";
-            if (name.includes("strength") || name.includes("power")) {
-                return cls;
-            }
-        }
-    }
-    return null;
-};
+const findClass = (schedule, time) =>
+    schedule.find(
+        (cls) =>
+            cls.time === time &&
+            (cls.box_categories?.name?.toLowerCase().includes("strength") ||
+                cls.box_categories?.name?.toLowerCase().includes("power"))
+    ) || null;
 
-const enrollInClass = async (cls, token, refreshToken) => {
+const enroll = async (cls, token, refreshToken) => {
     if (DRY_RUN) {
         console.log(`[DRY RUN] Would enroll in: ${cls.box_categories.name} at ${cls.time}`);
         return { ok: true };
@@ -94,97 +82,67 @@ const enrollInClass = async (cls, token, refreshToken) => {
             accesstoken: token,
             refreshtoken: refreshToken,
         },
-        body: JSON.stringify({
-            extras: null,
-            membership_user_id: MEMBERSHIP_ID,
-            schedule_id: cls.id,
-        }),
+        body: JSON.stringify({ extras: null, membership_user_id: MEMBERSHIP_ID, schedule_id: cls.id }),
     });
     const data = await res.json();
     return { ok: res.status === 200, data };
 };
 
-const tryAtTime = async (date, time, token, refreshToken) => {
-    console.log(`Checking ${time} on ${date}...`);
-    const schedule = await getSchedule(date, token, refreshToken);
-    const cls = findClass(schedule, time);
-
-    if (!cls) {
-        console.log(`No strength/power class found at ${time}`);
-        return { status: "notFound", label: time };
-    }
-
-    const label = `${cls.box_categories.name} ${time} (${date})`;
-
-    if (cls.free <= 0) {
-        console.log(`Class full: ${label}`);
-        return { status: "full", label };
-    }
-
-    const result = await enrollInClass(cls, token, refreshToken);
-    if (result.ok) {
-        console.log(`Enrolled! ${label}`);
-        return { status: "enrolled", label };
-    }
-
-    const rawReason = result.data?.error?.messageToUser || result.data?.message;
-    const reason = Array.isArray(rawReason)
-        ? rawReason[0]?.message || JSON.stringify(rawReason[0])
-        : typeof rawReason === "string"
-        ? rawReason
-        : JSON.stringify(rawReason);
-    console.log(`Enrollment failed: ${reason}`);
-    return { status: "failed", label, reason };
-};
-
-// Wait until 20:30 Israel time
-if (!SKIP_WAIT) {
-    const ms = getMillisUntil("20:30:00");
-    if (ms > 0) {
-        console.log(`Waiting ${Math.round(ms / 1000)}s until 20:30 Israel time...`);
-        await wait(ms);
-    }
-}
-
-console.log("Starting one-time Tuesday enrollment...");
+console.log(`One-time Tuesday enrollment — slot: ${targetTime}`);
 const { token, refreshToken } = await login();
 const date = getNextTuesdayDate();
 console.log(`Target date: ${date}`);
 
-const attempt1 = await tryAtTime(date, "08:30", token, refreshToken);
+const schedule = await getSchedule(date, token, refreshToken);
 
-let attempt2 = null;
-if (attempt1.status === "full") {
-    if (!SKIP_WAIT) {
-        const ms = getMillisUntil("21:30:00");
-        if (ms > 0) {
-            console.log(`08:30 is full. Waiting ${Math.round(ms / 1000)}s until 21:30 to try 09:30...`);
-            await wait(ms);
-        }
-    } else {
-        console.log("08:30 is full. Trying 09:30...");
+// For the 09:30 slot: skip if already enrolled in 08:30
+if (SLOT === "0930") {
+    const cls0830 = findClass(schedule, "08:30");
+    if (cls0830?.booking_option === "cancelScheduleUser") {
+        console.log("Already enrolled in 08:30 — skipping 09:30 attempt.");
+        process.exit(0);
     }
-    attempt2 = await tryAtTime(date, "09:30", token, refreshToken);
 }
 
-if (!DRY_RUN && ALERTZY_KEY) {
-    const lines = [];
+const cls = findClass(schedule, targetTime);
 
-    if (attempt1.status === "enrolled") lines.push(`✅ נרשמת: ${attempt1.label}`);
-    else if (attempt1.status === "full") lines.push(`⏳ מלא — הירשמי ידנית להמתנה: ${attempt1.label}`);
-    else if (attempt1.status === "notFound") lines.push(`⚠️ שיעור לא נמצא: ${attempt1.label}`);
-    else if (attempt1.status === "failed") lines.push(`❌ נכשל: ${attempt1.label}: ${attempt1.reason}`);
-
-    if (attempt2) {
-        if (attempt2.status === "enrolled") lines.push(`✅ נרשמת: ${attempt2.label}`);
-        else if (attempt2.status === "full") lines.push(`⏳ מלא — הירשמי ידנית להמתנה: ${attempt2.label}`);
-        else if (attempt2.status === "notFound") lines.push(`⚠️ שיעור לא נמצא: ${attempt2.label}`);
-        else if (attempt2.status === "failed") lines.push(`❌ נכשל: ${attempt2.label}: ${attempt2.reason}`);
+if (!cls) {
+    console.log(`No strength/power class found at ${targetTime}`);
+    if (!DRY_RUN && ALERTZY_KEY) {
+        await sendPushNotification(ALERTZY_KEY, "⚠️ שיעור לא נמצא", `לא נמצא שיעור בשעה ${targetTime} ביום שלישי ${date}`);
     }
+    process.exit(0);
+}
 
-    const enrolled = attempt1.status === "enrolled" || attempt2?.status === "enrolled";
-    const title = enrolled ? "✅ הרישום הסתיים" : "❌ הרישום הסתיים";
-    await sendPushNotification(ALERTZY_KEY, title, lines.join("\n") || "לא היו שיעורים לרישום");
+const label = `${cls.box_categories.name} ${targetTime} (${date})`;
+
+if (cls.free <= 0) {
+    console.log(`Class full: ${label}`);
+    if (!DRY_RUN && ALERTZY_KEY) {
+        const msg = SLOT === "0830"
+            ? `⏳ ${label} מלא\nאנסה ב-09:30 בשעה 21:30...`
+            : `⏳ ${label} מלא — הירשמי ידנית להמתנה`;
+        await sendPushNotification(ALERTZY_KEY, "⏳ שיעור מלא", msg);
+    }
+    process.exit(0);
+}
+
+const result = await enroll(cls, token, refreshToken);
+
+if (result.ok) {
+    console.log(`Enrolled! ${label}`);
+    if (!DRY_RUN && ALERTZY_KEY) {
+        await sendPushNotification(ALERTZY_KEY, "✅ נרשמת!", `✅ ${label}`);
+    }
+} else {
+    const rawReason = result.data?.error?.messageToUser || result.data?.message;
+    const reason = Array.isArray(rawReason)
+        ? rawReason[0]?.message || JSON.stringify(rawReason[0])
+        : typeof rawReason === "string" ? rawReason : JSON.stringify(rawReason);
+    console.log(`Enrollment failed: ${reason}`);
+    if (!DRY_RUN && ALERTZY_KEY) {
+        await sendPushNotification(ALERTZY_KEY, "❌ הרישום נכשל", `❌ ${label}\n${reason}`);
+    }
 }
 
 console.log("Done!");

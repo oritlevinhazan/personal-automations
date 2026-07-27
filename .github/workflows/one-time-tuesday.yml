@@ -1,12 +1,17 @@
 name: One-Time Tuesday Enrollment
 
 on:
+  schedule:
+    # 08:30 attempt: fires at 17:30 UTC = 20:30 Israel (UTC+3 summer)
+    - cron: '30 17 27 7 *'
+    # 09:30 fallback: fires at 18:30 UTC = 21:30 Israel
+    - cron: '30 18 27 7 *'
   workflow_dispatch:
     inputs:
-      skip_wait:
-        description: 'Skip waiting until 20:30 (for testing)'
-        required: false
-        default: 'false'
+      slot:
+        description: 'Time slot to try: 0830 or 0930'
+        required: true
+        default: '0830'
       dry_run:
         description: 'Dry run - check availability without enrolling'
         required: false
@@ -15,7 +20,7 @@ on:
 jobs:
   enroll:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v3
 
@@ -27,11 +32,27 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Determine slot from schedule or input
+        id: slot
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "slot=${{ github.event.inputs.slot }}" >> $GITHUB_OUTPUT
+          else
+            # Infer slot from the current UTC hour/minute
+            HOUR=$(date -u +%H)
+            MIN=$(date -u +%M)
+            if [ "$HOUR" = "17" ]; then
+              echo "slot=0830" >> $GITHUB_OUTPUT
+            else
+              echo "slot=0930" >> $GITHUB_OUTPUT
+            fi
+          fi
+
       - name: Run one-time Tuesday enrollment
         env:
           ARBOX_USER_EMAIL: ${{ secrets.ARBOX_USER_EMAIL }}
           ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
           ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
-          SKIP_WAIT: ${{ github.event.inputs.skip_wait || 'false' }}
+          SLOT: ${{ steps.slot.outputs.slot }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         run: node arbox/one-time-tuesday.js
