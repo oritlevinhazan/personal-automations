@@ -7,10 +7,12 @@ import { sendPushNotification } from "../shared/push-notification.js";
 const BOOKON_API = "https://bookon-bamba-b2c-api.azurewebsites.net";
 const REFERRAL = "9F9A43B0-F415-4E03-BA8A-9C76805FE802";
 const MIN_SEATS = 4;
+const MIN_SEATS_AUG31 = 2;
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // only used in continuous mode
 const ALERTZY_KEY = process.env.ALERTZY_ACCOUNT_KEY;
 
 const TARGET_MONTH = "2026-08"; // August 2026
+const SPECIAL_DATE = "2026-08-31";
 
 async function getAugustSlots() {
     const res = await fetch(
@@ -48,7 +50,6 @@ async function poll() {
     console.log(`  Found ${slots.length} August slots`);
 
     const available = [];
-    const full = [];
 
     for (const slot of slots) {
         let capacity;
@@ -59,12 +60,12 @@ async function poll() {
             continue;
         }
 
-        console.log(`  ${slot.date} ${slot.time} (id=${slot.id}): ${capacity} seats`);
+        const threshold = slot.date === SPECIAL_DATE ? MIN_SEATS_AUG31 : MIN_SEATS;
+        console.log(`  ${slot.date} ${slot.time} (id=${slot.id}): ${capacity} seats (threshold: ${threshold})`);
 
-        if (capacity >= MIN_SEATS) {
-            available.push(`${slot.date} ${slot.time} (${capacity} מקומות)`);
-        } else {
-            full.push(`${slot.date} ${slot.time}`);
+        if (capacity >= threshold) {
+            const label = slot.date === SPECIAL_DATE ? "⭐ " : "";
+            available.push(`${label}${slot.date} ${slot.time} (${capacity} מקומות)`);
         }
     }
 
@@ -79,7 +80,7 @@ async function poll() {
             await sendPushNotification(
                 ALERTZY_KEY,
                 "🔍 במבה מוניטור - בדיקה תקינה",
-                `נבדקו ${slots.length} תאריכים באוגוסט — אין מקום ל-4 אנשים כרגע`
+                `נבדקו ${slots.length} תאריכים באוגוסט — אין מקום (31/8: 2+, שאר: 4+)`
             );
         }
     }
@@ -93,9 +94,7 @@ async function main() {
     const continuous = process.argv.includes("--continuous");
 
     console.log(`Bamba tour monitor started${continuous ? ` — polling every ${POLL_INTERVAL_MS / 60000} minutes` : " — single run"}`);
-    console.log(`Looking for August 2026 slots with ≥${MIN_SEATS} seats`);
-
-    const notifiedIds = new Set();
+    console.log(`Looking for August 2026 slots: Aug 31 ≥${MIN_SEATS_AUG31} seats, other dates ≥${MIN_SEATS} seats`);
 
     await poll();
 
