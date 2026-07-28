@@ -80,7 +80,7 @@ async function poll() {
             await sendPushNotification(
                 ALERTZY_KEY,
                 "🔍 במבה מוניטור - בדיקה תקינה",
-                `נבדקו ${slots.length} תאריכים באוגוסט — אין מקום (31/8: 2+, שאר: 4+)`
+                `נבדקו ${slots.length} תאריכים באוגוסט — אין זמינות כרגע`
             );
         }
     }
