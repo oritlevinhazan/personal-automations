@@ -3,7 +3,7 @@ import { addDays, format, subSeconds } from "date-fns";
 import fetch from "node-fetch";
 
 import { sendPushNotification } from "../../shared/push-notification.js";
-import { scheduleClasses } from "../data/schedule.js";
+import { scheduleClasses, fallbackSchedule } from "../data/schedule.js";
 import config from "../data/config.js";
 const {
 	user_creds,
@@ -150,9 +150,62 @@ export const createEnrollmentJobs = async (onlyDays = null) => {
 		daysWithJobs.add(classObj.dayOfWeek);
 	}
 
+	// For days where preferred slots are all full, try fallback slots
+	const daysFullNoFallback = new Set();
+	const daysFullWithFallback = new Set();
+	const fullDaysWithoutJob = uniqueDays.filter((d) => daysFullyBooked.has(d) && !daysWithJobs.has(d));
+	for (const day of fullDaysWithoutJob) {
+		const { date: nextDate, boxSchedule } = scheduleByDay[day];
+		const fallbacks = fallbackSchedule.filter((c) => c.dayOfWeek === day);
+		let addedFallback = false;
+
+		for (const classObj of fallbacks) {
+			if (daysWithJobs.has(day)) break;
+
+			let optionalClasses = [];
+			for (const boxClass of boxSchedule) {
+				if (
+					boxClass.time === classObj.start_time &&
+					boxClass.box_categories.name.trim().toLowerCase().includes(classObj.class_name.toLowerCase())
+				) {
+					optionalClasses.push(boxClass);
+				}
+			}
+
+			if (optionalClasses.length === 0) continue;
+
+			const availableClasses = optionalClasses.filter(c => c.free > 0);
+			if (availableClasses.length === 0) continue;
+
+			let selected_class = availableClasses[0];
+			outer2: for (const coach of COACH_PRIORITIES) {
+				for (const currClass of availableClasses) {
+					if (currClass.coach && coach === currClass.coach.full_name) {
+						selected_class = currClass;
+						break outer2;
+					}
+				}
+			}
+
+			const newJob = {
+				extras: null,
+				membership_user_id: user.membership_id,
+				schedule_id: selected_class.id,
+				workoutDetails: { ...classObj, date: nextDate },
+			};
+			addJob(newJob);
+			daysWithJobs.add(day);
+			addedFallback = true;
+		}
+
+		if (addedFallback) daysFullWithFallback.add(day);
+		else daysFullNoFallback.add(day);
+	}
+
 	return {
 		notPublished: uniqueDays.filter((d) => scheduleByDay[d]?.notPublished && !daysWithJobs.has(d)),
-		full: uniqueDays.filter((d) => daysFullyBooked.has(d) && !daysWithJobs.has(d)),
+		full: [...daysFullNoFallback],
+		fullWithFallback: [...daysFullWithFallback],
 		notFound: uniqueDays.filter((d) => !scheduleByDay[d] || (!scheduleByDay[d].notPublished && !daysFullyBooked.has(d) && !daysWithJobs.has(d))),
 		missingDays: uniqueDays.filter((d) => !daysWithJobs.has(d)),
 	};

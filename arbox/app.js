@@ -102,10 +102,12 @@ if (!DRY_RUN && alertzyAccountKey) {
     for (const f of allFailed) lines.push(`❌ ${f}`);
 
     const fullNames = result.full.map(d => dayNames[d] || d).join(", ");
+    const fullWithFallbackNames = result.fullWithFallback.map(d => dayNames[d] || d).join(", ");
     const notFoundNames = result.notFound.map(d => dayNames[d] || d).join(", ");
     const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
 
     if (fullNames) lines.push(`⏳ מלא — הירשמי ידנית להמתנה: ${fullNames}`);
+    if (fullWithFallbackNames) lines.push(`⏳ מלא ב-8 — הירשמי ידנית להמתנה: ${fullWithFallbackNames}`);
     if (notFoundNames) lines.push(`⚠️ שיעורים לא נמצאו: ${notFoundNames}`);
     if (notPublishedNames) lines.push(`⚠️ לוח לא פורסם: ${notPublishedNames}`);
 
