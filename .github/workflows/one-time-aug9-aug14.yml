@@ -1,0 +1,45 @@
+name: One-Time Aug9+Aug14 Enrollment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target date: aug9 or aug14'
+        required: true
+        default: 'aug9'
+      dry_run:
+        required: false
+        default: 'false'
+
+jobs:
+  enroll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+      - name: Run enrollment
+        env:
+          ARBOX_USER_EMAIL: ${{ secrets.ARBOX_USER_EMAIL }}
+          ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+          TARGET: ${{ github.event.inputs.target }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: node arbox/one-time-aug9-aug14.js
+      - name: Notify on crash
+        if: failure()
+        env:
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+        run: |
+          node -e "
+            import('../shared/push-notification.js').then(m =>
+              m.sendPushNotification(
+                process.env.ALERTZY_ACCOUNT_KEY,
+                '⚠️ שגיאה בסקריפט',
+                'הסקריפט קרס עבור ${{ github.event.inputs.target }} — בדקי GitHub Actions'
+              )
+            )
+          "
