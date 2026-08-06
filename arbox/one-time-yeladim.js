@@ -12,8 +12,8 @@ const MEMBERSHIP_ID = 13327706;
 const LOCATION_ID = 21697;
 const BASE_URL = "https://apiappv2.arboxapp.com/api/v2";
 
-// Next week: Sun Aug 9 – Fri Aug 14
-const DATES = ["2026-08-09", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14"];
+// Next week: Sun Aug 9 – Sat Aug 15
+const DATES = ["2026-08-09", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-15"];
 
 const login = async () => {
     const res = await fetch(`${BASE_URL}/user/login`, {
