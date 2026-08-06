@@ -296,16 +296,16 @@ export const envokeJobs = async (dryRun = false) => {
 	emptyJobsList();
 
 	const results = await Promise.all(currentJobs.map(async (currJob) => {
-		const label = `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time} (${currJob.workoutDetails.date})`;
-
-		if (dryRun) {
-			console.log(
-				`[DRY RUN] Would enroll in [${currJob.workoutDetails.class_name}] at ${currJob.workoutDetails.start_time} on ${currJob.workoutDetails.date}`
-			);
-			return null;
-		}
-
 		try {
+			const label = `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time} (${currJob.workoutDetails.date})`;
+
+			if (dryRun) {
+				console.log(
+					`[DRY RUN] Would enroll in [${currJob.workoutDetails.class_name}] at ${currJob.workoutDetails.start_time} on ${currJob.workoutDetails.date}`
+				);
+				return null;
+			}
+
 			const detailsForRegistration = {
 				extras: currJob.extras,
 				membership_user_id: currJob.membership_user_id,
@@ -342,7 +342,10 @@ export const envokeJobs = async (dryRun = false) => {
 			}
 		} catch (e) {
 			console.log("Issue with enrolling to specific class.");
-			return { failed: `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time}: error` };
+			const label = currJob.workoutDetails
+				? `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time} (${currJob.workoutDetails.date})`
+				: "unknown class";
+			return { failed: `${label}: error` };
 		}
 	}));
 

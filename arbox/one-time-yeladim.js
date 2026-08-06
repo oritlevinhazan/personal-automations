@@ -69,13 +69,17 @@ const enroll = async (cls, date, token, refreshToken) => {
 console.log("One-time ילדים enrollment — next week (Aug 9–15)");
 const { token, refreshToken } = await login();
 
-// Fetch all schedules in parallel
+// Fetch all schedules in parallel — isolate failures per day
 const schedules = await Promise.all(
-    DATES.map(date => getSchedule(date, token, refreshToken).then(s => ({ date, schedule: s })))
+    DATES.map(date =>
+        getSchedule(date, token, refreshToken)
+            .then(s => ({ date, schedule: s }))
+            .catch(e => { console.log(`${date}: failed to fetch schedule — ${e.message}`); return null; })
+    )
 );
 
 // Collect all ילדים classes across all days
-const allClasses = schedules.flatMap(({ date, schedule }) => {
+const allClasses = schedules.filter(Boolean).flatMap(({ date, schedule }) => {
     const yeladimClasses = schedule.filter(cls => cls.box_categories?.name?.includes("ילדים"));
     if (yeladimClasses.length === 0) console.log(`${date}: no ילדים classes found`);
     return yeladimClasses.map(cls => ({ cls, date }));
