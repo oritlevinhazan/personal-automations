@@ -1,0 +1,129 @@
+import dotenv from "dotenv";
+dotenv.config();
+
+import fetch from "node-fetch";
+import { sendPushNotification } from "../shared/push-notification.js";
+
+const EMAIL = process.env.ARBOX_USER_EMAIL;
+const PASSWORD = process.env.ARBOX_USER_PASSWORD;
+const ALERTZY_KEY = process.env.ALERTZY_ACCOUNT_KEY;
+const DRY_RUN = process.env.DRY_RUN === "true";
+const MEMBERSHIP_ID = 13327706;
+const LOCATION_ID = 21697;
+const BASE_URL = "https://apiappv2.arboxapp.com/api/v2";
+
+// Next week: Sun Aug 9 – Fri Aug 14
+const DATES = ["2026-08-09", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14"];
+
+const login = async () => {
+    const res = await fetch(`${BASE_URL}/user/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    });
+    if (res.status !== 200) throw new Error(`Login failed: HTTP ${res.status}`);
+    const data = await res.json();
+    return { token: data.data.token, refreshToken: data.data.refreshToken };
+};
+
+const getSchedule = async (date, token, refreshToken) => {
+    const res = await fetch(`${BASE_URL}/schedule/betweenDates`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            accesstoken: token,
+            refreshtoken: refreshToken,
+        },
+        body: JSON.stringify({
+            from: `${date}T00:00:00.000Z`,
+            locations_box_id: LOCATION_ID,
+            to: `${date}T00:00:00.000Z`,
+        }),
+    });
+    if (res.status !== 200) throw new Error(`Schedule fetch failed: HTTP ${res.status}`);
+    const data = await res.json();
+    return data.data || [];
+};
+
+const isEnrolled = (cls) => cls?.schedule_user?.some(u => u.membership_user_fk === MEMBERSHIP_ID);
+
+const enroll = async (cls, date, token, refreshToken) => {
+    const label = `${cls.box_categories.name} ${cls.time} (${date})`;
+    if (DRY_RUN) {
+        console.log(`[DRY RUN] Would enroll in: ${label}`);
+        return { ok: true, label };
+    }
+    const res = await fetch(`${BASE_URL}/scheduleUser/insert`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            accesstoken: token,
+            refreshtoken: refreshToken,
+        },
+        body: JSON.stringify({ extras: null, membership_user_id: MEMBERSHIP_ID, schedule_id: cls.id }),
+    });
+    const data = await res.json();
+    return { ok: res.status === 200, label, data };
+};
+
+console.log("One-time ילדים enrollment — next week (Aug 9–14)");
+const { token, refreshToken } = await login();
+
+const succeeded = [];
+const failed = [];
+const skipped = [];
+
+for (const date of DATES) {
+    const schedule = await getSchedule(date, token, refreshToken);
+    const yeladimClasses = schedule.filter(cls =>
+        cls.box_categories?.name?.includes("ילדים")
+    );
+
+    if (yeladimClasses.length === 0) {
+        console.log(`${date}: no ילדים classes found`);
+        continue;
+    }
+
+    for (const cls of yeladimClasses) {
+        const label = `${cls.box_categories.name} ${cls.time} (${date})`;
+
+        if (isEnrolled(cls)) {
+            console.log(`Already enrolled: ${label}`);
+            skipped.push(label);
+            continue;
+        }
+
+        if (cls.free <= 0) {
+            console.log(`Full: ${label}`);
+            failed.push(`${label}: מלא`);
+            continue;
+        }
+
+        const result = await enroll(cls, date, token, refreshToken);
+        if (result.ok) {
+            console.log(`Enrolled: ${label}`);
+            succeeded.push(label);
+        } else {
+            const rawReason = result.data?.error?.messageToUser || result.data?.message;
+            const reason = Array.isArray(rawReason)
+                ? rawReason[0]?.message || JSON.stringify(rawReason[0])
+                : typeof rawReason === "string" ? rawReason : JSON.stringify(rawReason);
+            console.log(`Failed: ${label} — ${reason}`);
+            failed.push(`${label}: ${reason}`);
+        }
+    }
+}
+
+console.log(`Done. Enrolled: ${succeeded.length}, failed: ${failed.length}, skipped: ${skipped.length}`);
+
+if (!DRY_RUN && ALERTZY_KEY) {
+    const lines = [];
+    for (const s of succeeded) lines.push(`✅ ${s}`);
+    for (const f of failed) lines.push(`❌ ${f}`);
+    for (const s of skipped) lines.push(`⏭️ כבר רשומה: ${s}`);
+
+    const title = succeeded.length > 0 ? "✅ רישום ילדים הסתיים" : "❌ רישום ילדים הסתיים";
+    await sendPushNotification(ALERTZY_KEY, title, lines.join("\n") || "לא נמצאו שיעורי ילדים");
+}
+
+process.exit(0);
