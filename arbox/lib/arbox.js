@@ -292,16 +292,17 @@ const emptyJobsList = () => {
 };
 
 export const envokeJobs = async (dryRun = false) => {
-	const succeeded = [];
-	const failed = [];
-	const hadJobs = jobs.length > 0;
+	const currentJobs = [...jobs];
+	emptyJobsList();
 
-	for (const currJob of jobs) {
+	const results = await Promise.all(currentJobs.map(async (currJob) => {
+		const label = `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time} (${currJob.workoutDetails.date})`;
+
 		if (dryRun) {
 			console.log(
 				`[DRY RUN] Would enroll in [${currJob.workoutDetails.class_name}] at ${currJob.workoutDetails.start_time} on ${currJob.workoutDetails.date}`
 			);
-			continue;
+			return null;
 		}
 
 		try {
@@ -325,11 +326,10 @@ export const envokeJobs = async (dryRun = false) => {
 				}
 			);
 			const responseData = await response.json();
-			const label = `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time} (${currJob.workoutDetails.date})`;
 
 			if (response.status === 200) {
 				console.log("Enrolled succesfully! 🥳");
-				succeeded.push(label);
+				return { succeeded: label };
 			} else {
 				const rawReason = responseData.error?.messageToUser || responseData.message;
 				const reason = Array.isArray(rawReason)
@@ -338,14 +338,16 @@ export const envokeJobs = async (dryRun = false) => {
 					? rawReason
 					: JSON.stringify(rawReason);
 				console.log(reason);
-				failed.push(`${label}: ${reason}`);
+				return { failed: `${label}: ${reason}` };
 			}
 		} catch (e) {
 			console.log("Issue with enrolling to specific class.");
-			failed.push(`${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time}: error`);
+			return { failed: `${currJob.workoutDetails.class_name} ${currJob.workoutDetails.start_time}: error` };
 		}
-	}
-	emptyJobsList();
+	}));
+
+	const succeeded = results.filter(r => r?.succeeded).map(r => r.succeeded);
+	const failed = results.filter(r => r?.failed).map(r => r.failed);
 
 	return { succeeded, failed };
 };
