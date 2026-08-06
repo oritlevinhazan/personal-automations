@@ -66,53 +66,52 @@ const enroll = async (cls, date, token, refreshToken) => {
     return { ok: res.status === 200, label, data };
 };
 
-console.log("One-time ילדים enrollment — next week (Aug 9–14)");
+console.log("One-time ילדים enrollment — next week (Aug 9–15)");
 const { token, refreshToken } = await login();
 
-const succeeded = [];
-const failed = [];
-const skipped = [];
+// Fetch all schedules in parallel
+const schedules = await Promise.all(
+    DATES.map(date => getSchedule(date, token, refreshToken).then(s => ({ date, schedule: s })))
+);
 
-for (const date of DATES) {
-    const schedule = await getSchedule(date, token, refreshToken);
-    const yeladimClasses = schedule.filter(cls =>
-        cls.box_categories?.name?.includes("ילדים")
-    );
+// Collect all ילדים classes across all days
+const allClasses = schedules.flatMap(({ date, schedule }) => {
+    const yeladimClasses = schedule.filter(cls => cls.box_categories?.name?.includes("ילדים"));
+    if (yeladimClasses.length === 0) console.log(`${date}: no ילדים classes found`);
+    return yeladimClasses.map(cls => ({ cls, date }));
+});
 
-    if (yeladimClasses.length === 0) {
-        console.log(`${date}: no ילדים classes found`);
-        continue;
+// Enroll in all in parallel
+const results = await Promise.all(allClasses.map(async ({ cls, date }) => {
+    const label = `${cls.box_categories.name} ${cls.time} (${date})`;
+
+    if (isEnrolled(cls)) {
+        console.log(`Already enrolled: ${label}`);
+        return { type: "skipped", label };
     }
 
-    for (const cls of yeladimClasses) {
-        const label = `${cls.box_categories.name} ${cls.time} (${date})`;
-
-        if (isEnrolled(cls)) {
-            console.log(`Already enrolled: ${label}`);
-            skipped.push(label);
-            continue;
-        }
-
-        if (cls.free <= 0) {
-            console.log(`Full: ${label}`);
-            failed.push(`${label}: מלא`);
-            continue;
-        }
-
-        const result = await enroll(cls, date, token, refreshToken);
-        if (result.ok) {
-            console.log(`Enrolled: ${label}`);
-            succeeded.push(label);
-        } else {
-            const rawReason = result.data?.error?.messageToUser || result.data?.message;
-            const reason = Array.isArray(rawReason)
-                ? rawReason[0]?.message || JSON.stringify(rawReason[0])
-                : typeof rawReason === "string" ? rawReason : JSON.stringify(rawReason);
-            console.log(`Failed: ${label} — ${reason}`);
-            failed.push(`${label}: ${reason}`);
-        }
+    if (cls.free <= 0) {
+        console.log(`Full: ${label}`);
+        return { type: "failed", label: `${label}: מלא` };
     }
-}
+
+    const result = await enroll(cls, date, token, refreshToken);
+    if (result.ok) {
+        console.log(`Enrolled: ${label}`);
+        return { type: "succeeded", label };
+    }
+
+    const rawReason = result.data?.error?.messageToUser || result.data?.message;
+    const reason = Array.isArray(rawReason)
+        ? rawReason[0]?.message || JSON.stringify(rawReason[0])
+        : typeof rawReason === "string" ? rawReason : JSON.stringify(rawReason);
+    console.log(`Failed: ${label} — ${reason}`);
+    return { type: "failed", label: `${label}: ${reason}` };
+}));
+
+const succeeded = results.filter(r => r.type === "succeeded").map(r => r.label);
+const failed = results.filter(r => r.type === "failed").map(r => r.label);
+const skipped = results.filter(r => r.type === "skipped").map(r => r.label);
 
 console.log(`Done. Enrolled: ${succeeded.length}, failed: ${failed.length}, skipped: ${skipped.length}`);
 
