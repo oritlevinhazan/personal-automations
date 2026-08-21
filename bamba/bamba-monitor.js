@@ -72,11 +72,17 @@ async function poll() {
                 "🎉 מקום פנוי בסיור בארץ במבה!",
                 available.join("\n")
             );
+        } else if (slots.length === 0) {
+            await sendPushNotification(
+                ALERTZY_KEY,
+                "🔍 במבה מוניטור - בדיקה תקינה",
+                `31.8 לא מופיע בלוח הזמנים כרגע`
+            );
         } else {
             await sendPushNotification(
                 ALERTZY_KEY,
                 "🔍 במבה מוניטור - בדיקה תקינה",
-                `נבדקו ${slots.length} זמנים ב-31.8 — אין זמינות כרגע`
+                `נבדקו ${slots.length} זמנים ב-31.8 — אין מספיק מקומות (צריך ${MIN_SEATS})`
             );
         }
     }
