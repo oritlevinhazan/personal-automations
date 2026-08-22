@@ -73,9 +73,10 @@ async function poll() {
                 available.join("\n")
             );
         } else if (process.env.SEND_SUMMARY === "true") {
+            const runCount = process.env.DAILY_RUN_COUNT ? ` (${process.env.DAILY_RUN_COUNT} בדיקות היום)` : "";
             const msg = slots.length === 0
-                ? "31.8 לא מופיע בלוח הזמנים כרגע"
-                : `נבדקו ${slots.length} זמנים ב-31.8 — אין מספיק מקומות (צריך ${MIN_SEATS})`;
+                ? `31.8 לא מופיע בלוח הזמנים${runCount}`
+                : `נבדקו ${slots.length} זמנים ב-31.8 — אין מספיק מקומות (צריך ${MIN_SEATS})${runCount}`;
             await sendPushNotification(ALERTZY_KEY, "🔍 במבה — סיכום יומי", msg);
         }
     }
