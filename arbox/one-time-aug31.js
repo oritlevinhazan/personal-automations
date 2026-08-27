@@ -7,6 +7,8 @@ import { sendPushNotification } from "../shared/push-notification.js";
 const EMAIL = process.env.ARBOX_USER_EMAIL;
 const PASSWORD = process.env.ARBOX_USER_PASSWORD;
 const ALERTZY_KEY = process.env.ALERTZY_ACCOUNT_KEY;
+const CRONJOB_API_KEY = process.env.CRONJOB_API_KEY;
+const CRONJOB_JOB_ID = 8337765;
 const DRY_RUN = process.env.DRY_RUN === "true";
 const MEMBERSHIP_ID = 13327706;
 const LOCATION_ID = 21697;
@@ -68,6 +70,19 @@ const findClass = (schedule, time) =>
 
 const isEnrolled = (cls) => cls?.schedule_user?.some(u => u.membership_user_fk === MEMBERSHIP_ID);
 
+const deleteCronJob = async () => {
+    if (DRY_RUN || !CRONJOB_API_KEY) return;
+    try {
+        const res = await fetch(`https://api.cron-job.org/jobs/${CRONJOB_JOB_ID}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${CRONJOB_API_KEY}` },
+        });
+        console.log(`Cron job ${CRONJOB_JOB_ID} deleted: HTTP ${res.status}`);
+    } catch (err) {
+        console.warn(`Failed to delete cron job: ${err.message}`);
+    }
+};
+
 const enroll = async (cls, token, refreshToken) => {
     if (DRY_RUN) {
         console.log(`[DRY RUN] Would enroll in: ${cls.box_categories.name} at ${cls.time} on ${DATE}`);
@@ -110,6 +125,7 @@ for (const slot of availableSlots) {
 
     if (isEnrolled(cls)) {
         console.log(`Already enrolled at ${slot.time} — done.`);
+        await deleteCronJob();
         process.exit(0);
     }
 
@@ -123,6 +139,7 @@ for (const slot of availableSlots) {
 
     if (result.ok) {
         console.log(`Enrolled! ${label}`);
+        await deleteCronJob();
         if (!DRY_RUN && ALERTZY_KEY) {
             await sendPushNotification(ALERTZY_KEY, "✅ נרשמת!", `✅ ${label}`);
         }

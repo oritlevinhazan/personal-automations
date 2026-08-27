@@ -22,6 +22,7 @@ jobs:
           ARBOX_USER_EMAIL: ${{ secrets.ARBOX_USER_EMAIL }}
           ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
           ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+          CRONJOB_API_KEY: ${{ secrets.CRONJOB_API_KEY }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
         run: node arbox/one-time-aug31.js
       - name: Notify on crash
