@@ -14,8 +14,8 @@ const BASE_URL = "https://apiappv2.arboxapp.com/api/v2";
 
 const DATE = "2026-09-08";
 const DAY_LABEL = "שלישי 8.9";
-// 11:00 first priority, 10:00 fallback
-const TIMES = ["11:00", "10:00"];
+// 11:xx first priority (all variants), then 10:xx fallback
+const TIMES = ["11:00", "11:15", "11:30", "10:00", "10:15", "10:30"];
 
 const login = async () => {
     const res = await fetch(`${BASE_URL}/user/login`, {
@@ -121,6 +121,6 @@ for (const time of TIMES) {
 
 console.log("All slots exhausted — no enrollment made.");
 if (!DRY_RUN && ALERTZY_KEY) {
-    await sendPushNotification(ALERTZY_KEY, "⏳ כל השיעורים מלאים", `כל השיעורים מלאים (11:00, 10:00) — ${DAY_LABEL}\nהירשמי ידנית להמתנה`);
+    await sendPushNotification(ALERTZY_KEY, "⏳ כל השיעורים מלאים", `כל השיעורים מלאים (11:00–11:30, 10:00–10:30) — ${DAY_LABEL}\nהירשמי ידנית להמתנה`);
 }
 process.exit(0);

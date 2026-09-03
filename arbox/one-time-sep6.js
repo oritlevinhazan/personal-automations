@@ -14,7 +14,7 @@ const BASE_URL = "https://apiappv2.arboxapp.com/api/v2";
 
 const DATE = "2026-09-06";
 const DAY_LABEL = "ראשון 6.9";
-const TIME = "18:00";
+const TIMES = ["18:00", "18:15", "18:30"];
 
 const login = async () => {
     const res = await fetch(`${BASE_URL}/user/login`, {
@@ -74,51 +74,52 @@ const enroll = async (cls, token, refreshToken) => {
     return { ok: res.status === 200, data };
 };
 
-console.log(`One-time Sep 6 enrollment — ${TIME} (${DAY_LABEL})`);
+console.log(`One-time Sep 6 enrollment — ${DAY_LABEL}, trying: ${TIMES.join(", ")}`);
 const { token, refreshToken } = await login();
 const schedule = await getSchedule(token, refreshToken);
-const cls = findClass(schedule, TIME);
 
-if (!cls) {
-    console.log(`No strength/power class found at ${TIME}`);
-    if (!DRY_RUN && ALERTZY_KEY) {
-        await sendPushNotification(ALERTZY_KEY, "⚠️ שיעור לא נמצא", `לא נמצא שיעור strength/power בשעה ${TIME} — ${DAY_LABEL}`);
+for (const time of TIMES) {
+    const cls = findClass(schedule, time);
+
+    if (!cls) {
+        console.log(`No strength/power class found at ${time} — skipping.`);
+        continue;
     }
-    process.exit(0);
-}
 
-if (isEnrolled(cls)) {
-    console.log(`Already enrolled at ${TIME} — done.`);
-    process.exit(0);
-}
-
-const label = `${cls.box_categories.name} ${TIME} (${DAY_LABEL})`;
-
-if (cls.free <= 0) {
-    console.log(`Class full: ${label}`);
-    if (!DRY_RUN && ALERTZY_KEY) {
-        await sendPushNotification(ALERTZY_KEY, "⏳ שיעור מלא", `⏳ ${label} מלא — הירשמי ידנית להמתנה`);
+    if (isEnrolled(cls)) {
+        console.log(`Already enrolled at ${time} — done.`);
+        process.exit(0);
     }
-    process.exit(0);
-}
 
-const result = await enroll(cls, token, refreshToken);
-
-if (result.ok) {
-    console.log(`Enrolled! ${label}`);
-    if (!DRY_RUN && ALERTZY_KEY) {
-        await sendPushNotification(ALERTZY_KEY, "✅ נרשמת!", `✅ ${label}`);
+    if (cls.free <= 0) {
+        console.log(`Class full at ${time} — trying next slot...`);
+        continue;
     }
-} else {
+
+    const label = `${cls.box_categories.name} ${time} (${DAY_LABEL})`;
+    const result = await enroll(cls, token, refreshToken);
+
+    if (result.ok) {
+        console.log(`Enrolled! ${label}`);
+        if (!DRY_RUN && ALERTZY_KEY) {
+            await sendPushNotification(ALERTZY_KEY, "✅ נרשמת!", `✅ ${label}`);
+        }
+        process.exit(0);
+    }
+
     const rawReason = result.data?.error?.messageToUser || result.data?.message;
     const reason = Array.isArray(rawReason)
         ? rawReason[0]?.message || JSON.stringify(rawReason[0])
         : typeof rawReason === "string" ? rawReason : JSON.stringify(rawReason);
-    console.log(`Enrollment failed: ${reason}`);
+    console.log(`Enrollment failed at ${time}: ${reason}`);
     if (!DRY_RUN && ALERTZY_KEY) {
         await sendPushNotification(ALERTZY_KEY, "❌ הרישום נכשל", `❌ ${label}\n${reason}`);
     }
+    process.exit(0);
 }
 
-console.log("Done!");
+console.log("All slots exhausted — no enrollment made.");
+if (!DRY_RUN && ALERTZY_KEY) {
+    await sendPushNotification(ALERTZY_KEY, "⏳ כל השיעורים מלאים", `כל השיעורים מלאים (18:00–18:30) — ${DAY_LABEL}\nהירשמי ידנית להמתנה`);
+}
 process.exit(0);
