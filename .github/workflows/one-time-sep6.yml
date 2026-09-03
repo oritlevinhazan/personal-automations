@@ -1,0 +1,40 @@
+name: One-Time Sep 6 Enrollment
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        required: false
+        default: 'false'
+
+jobs:
+  enroll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+      - name: Run enrollment
+        env:
+          ARBOX_USER_EMAIL: ${{ secrets.ARBOX_USER_EMAIL }}
+          ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: node arbox/one-time-sep6.js
+      - name: Notify on crash
+        if: failure()
+        env:
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+        run: |
+          node -e "
+            import('../shared/push-notification.js').then(m =>
+              m.sendPushNotification(
+                process.env.ALERTZY_ACCOUNT_KEY,
+                '⚠️ שגיאה בסקריפט',
+                'הסקריפט קרס — one-time-sep6 — בדקי GitHub Actions'
+              )
+            )
+          "
