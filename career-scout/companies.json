@@ -1,0 +1,314 @@
+{
+  "candidate": {
+    "name": "Orit Levin Hazan",
+    "skills_required": ["sql"],
+    "skills_strong": ["tableau", "snowflake", "dbt", "redshift", "ga4", "google analytics", "mixpanel", "amplitude"],
+    "skills_good": ["salesforce", "hubspot", "marketo", "google ads", "facebook ads", "meta ads", "appsflyer", "attribution", "git"],
+    "skills_learning": ["python"],
+    "title_include": ["data analyst", "business analyst", "analytics", "bi analyst", "marketing analyst", "product analyst"],
+    "title_exclude": ["data scientist", "data engineer", "ml engineer", "data platform", "devops", "security engineer", "software engineer"]
+  },
+  "companies": [
+    {
+      "name": "monday.com",
+      "domain": "Work OS / SaaS",
+      "ats": "custom",
+      "careers_url": "https://monday.com/careers/",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "Yigal Alon 51, Tel Aviv",
+      "size": "~2,000 Israel / ~1,800 global",
+      "stage": "Public (NASDAQ: MNDY)",
+      "scores": {
+        "growth": 9,
+        "equity": 7,
+        "culture": 9,
+        "layoff_history": "No significant layoffs in 3+ years",
+        "glassdoor_il": 4.4,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Top employer Israel, strong WLB. Senior Marketing Analytics role open Oct 2026."
+    },
+    {
+      "name": "Cato Networks",
+      "domain": "Cloud security (SASE)",
+      "ats": "greenhouse",
+      "careers_url": "https://www.catonetworks.com/careers/",
+      "greenhouse_slug": "catonetworks",
+      "lever_slug": null,
+      "address_israel": "HaMasger 13, Tel Aviv",
+      "size": "~1,500 global",
+      "stage": "Private, unicorn ($2.5B+ valuation)",
+      "scores": {
+        "growth": 8,
+        "equity": 7,
+        "culture": 7,
+        "layoff_history": "No layoffs reported",
+        "glassdoor_il": 4.1,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Pre-IPO unicorn. GTM Business Analyst - Marketing open Oct 2026."
+    },
+    {
+      "name": "Palo Alto Networks",
+      "domain": "Cybersecurity (acquired CyberArk Feb 2026)",
+      "ats": "workday",
+      "careers_url": "https://jobs.paloaltonetworks.com/en/location/petah-tikva-jobs/",
+      "workday_url": "https://paloaltonetworks.wd5.myworkdayjobs.com/panwexternalcareers",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "Gav Yam, Building B, Petach Tikva (former CyberArk campus)",
+      "size": "~22,000 global / ~2,500 Israel post-CyberArk",
+      "stage": "Public (NASDAQ: PANW)",
+      "scores": {
+        "growth": 8,
+        "equity": 7,
+        "culture": 8,
+        "layoff_history": "No major layoffs; absorbed CyberArk Feb 2026",
+        "glassdoor_il": 4.2,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Sr Data Analyst JR-022304 open as of Sept 2026. Workday — use search fallback."
+    },
+    {
+      "name": "Melio",
+      "domain": "B2B payments (fintech)",
+      "ats": "greenhouse",
+      "careers_url": "https://job-boards.greenhouse.io/melio",
+      "greenhouse_slug": "melio",
+      "lever_slug": null,
+      "address_israel": "Sarona Market, Tel Aviv",
+      "size": "~500 Israel",
+      "stage": "Private, unicorn ($4B valuation)",
+      "scores": {
+        "growth": 8,
+        "equity": 8,
+        "culture": 8,
+        "layoff_history": "No layoffs reported",
+        "glassdoor_il": 4.3,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Senior DA Risk open Oct 2026. Domain gap: risk/fraud vs. marketing analytics."
+    },
+    {
+      "name": "eToro",
+      "domain": "Fintech / trading platform",
+      "ats": "custom",
+      "careers_url": "https://www.etoro.com/about/careers/",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "Azrieli Center, 132 Begin Rd, Tel Aviv",
+      "size": "~1,600 global",
+      "stage": "Public (NASDAQ: ETOR, IPO 2025)",
+      "scores": {
+        "growth": 7,
+        "equity": 6,
+        "culture": 7,
+        "layoff_history": "Layoffs in 2022 (~30%). No major cuts since IPO.",
+        "glassdoor_il": 3.9,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Trading DA open Oct 2026. Domain: trading analytics. Title not 'Senior'."
+    },
+    {
+      "name": "Fiverr",
+      "domain": "Online marketplace",
+      "ats": "custom",
+      "careers_url": "https://www.fiverr.com/jobs",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "HaArba'a 30, Tel Aviv",
+      "size": "~600 global",
+      "stage": "Public (NYSE: FVRR)",
+      "scores": {
+        "growth": 6,
+        "equity": 4,
+        "culture": 6,
+        "layoff_history": "Multiple rounds 2022-2023 (~12%, ~8%). Stable since.",
+        "glassdoor_il": 3.8,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Score capped at 5.0 — stock down ~90% from 2021 peak. Senior Business DA open Mar 2026 — verify before applying."
+    },
+    {
+      "name": "AppsFlyer",
+      "domain": "Mobile attribution & marketing analytics",
+      "ats": "greenhouse",
+      "careers_url": "https://www.appsflyer.com/careers/",
+      "greenhouse_slug": "appsflyer",
+      "lever_slug": null,
+      "address_israel": "HaMenofim 14, Herzliya",
+      "size": "~1,600 global",
+      "stage": "Private",
+      "scores": {
+        "growth": 7,
+        "equity": 6,
+        "culture": 8,
+        "layoff_history": "Layoffs 2022 (~7%). No major cuts since.",
+        "glassdoor_il": 4.3,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Marketing analytics core product. Check for DA roles regularly — only Finance BA was open Oct 2026."
+    },
+    {
+      "name": "Varonis",
+      "domain": "Data security",
+      "ats": "custom",
+      "careers_url": "https://www.varonis.com/careers",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "HaBarzel 38, Tel Aviv",
+      "size": "~2,000 global",
+      "stage": "Public (NASDAQ: VRNS)",
+      "scores": {
+        "growth": 7,
+        "equity": 6,
+        "culture": 7,
+        "layoff_history": "No major layoffs reported",
+        "glassdoor_il": 4.0,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "No DA roles Oct 2026. Data Analytics Engineer only (too junior/wrong domain). Monitor."
+    },
+    {
+      "name": "Taboola",
+      "domain": "Content recommendation / native ads",
+      "ats": "custom",
+      "careers_url": "https://www.taboola.com/careers/jobs",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "HaArba'a 26, Tel Aviv",
+      "size": "~1,800 global",
+      "stage": "Public (NASDAQ: TBLA)",
+      "scores": {
+        "growth": 6,
+        "equity": 5,
+        "culture": 6,
+        "layoff_history": "Layoffs 2023 (~8%). Stable since.",
+        "glassdoor_il": 3.8,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "No Israel DA roles Oct 2026 — only Budapest. Monitor for Israel openings."
+    },
+    {
+      "name": "Riskified",
+      "domain": "Fraud prevention / ecommerce",
+      "ats": "custom",
+      "careers_url": "https://www.riskified.com/careers/",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "HaTidhar 5, Ra'anana",
+      "size": "~700 global",
+      "stage": "Public (NYSE: RSKD)",
+      "scores": {
+        "growth": 6,
+        "equity": 5,
+        "culture": 7,
+        "layoff_history": "Layoffs 2022 (~7%).",
+        "glassdoor_il": 4.0,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "No DA roles Oct 2026. Monitor — analytics team exists."
+    },
+    {
+      "name": "Wix",
+      "domain": "Website builder / SaaS",
+      "ats": "custom",
+      "careers_url": "https://careers.wix.com",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "Nemal Tel Aviv, 40 HaNamal St",
+      "size": "~5,700 global",
+      "stage": "Public (NASDAQ: WIX)",
+      "scores": {
+        "growth": 7,
+        "equity": 6,
+        "culture": 8,
+        "layoff_history": "Layoffs 2022 (~10%).",
+        "glassdoor_il": 4.1,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Only AI Analyst (Python/ML) open Oct 2026 — not a fit. Monitor for DA roles."
+    },
+    {
+      "name": "Gong",
+      "domain": "Revenue intelligence AI",
+      "ats": "teamme",
+      "careers_url": "https://gong.teamme.link",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "Yokneam / Herzliya (R&D center)",
+      "size": "~1,400 global",
+      "stage": "Private ($7.25B valuation)",
+      "scores": {
+        "growth": 8,
+        "equity": 8,
+        "culture": 8,
+        "layoff_history": "Layoffs 2023 (~4%). No major cuts since.",
+        "glassdoor_il": 4.4,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "No analytics roles Oct 2026 — all engineering/security. High score if DA role opens."
+    },
+    {
+      "name": "JFrog",
+      "domain": "DevSecOps platform",
+      "ats": "custom",
+      "careers_url": "https://join.jfrog.com",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "Tidhar 8, Netanya",
+      "size": "~2,000 global",
+      "stage": "Public (NASDAQ: FROG)",
+      "scores": {
+        "growth": 7,
+        "equity": 6,
+        "culture": 8,
+        "layoff_history": "No major layoffs reported",
+        "glassdoor_il": 4.3,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "No DA roles Oct 2026 — only Data Scientist (ML/Python). Monitor."
+    },
+    {
+      "name": "Playtika",
+      "domain": "Mobile gaming / analytics",
+      "ats": "custom",
+      "careers_url": "https://www.playtika.com/careers/",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "HaMasger 48, Herzliya",
+      "size": "~3,500 global",
+      "stage": "Public (NASDAQ: PLTK)",
+      "scores": {
+        "growth": 6,
+        "equity": 5,
+        "culture": 6,
+        "layoff_history": "Layoffs 2023 (~15%). Recovery underway.",
+        "glassdoor_il": 3.7,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "Extremely data-heavy product analytics. Monitor actively."
+    },
+    {
+      "name": "Global-e",
+      "domain": "Cross-border ecommerce",
+      "ats": "custom",
+      "careers_url": "https://www.global-e.com/careers/",
+      "greenhouse_slug": null,
+      "lever_slug": null,
+      "address_israel": "Rambam 21, Petach Tikva",
+      "size": "~800 global",
+      "stage": "Public (NASDAQ: GLBE)",
+      "scores": {
+        "growth": 9,
+        "equity": 7,
+        "culture": 7,
+        "layoff_history": "No major layoffs reported",
+        "glassdoor_il": 4.0,
+        "last_updated": "2026-10-05"
+      },
+      "notes": "High growth ecommerce analytics. Check regularly."
+    }
+  ]
+}
