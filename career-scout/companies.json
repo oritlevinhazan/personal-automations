@@ -1,6 +1,5 @@
 {
   "candidate": {
-    "name": "Orit Levin Hazan",
     "skills_required": ["sql"],
     "skills_strong": ["tableau", "snowflake", "dbt", "redshift", "ga4", "google analytics", "mixpanel", "amplitude"],
     "skills_good": ["salesforce", "hubspot", "marketo", "google ads", "facebook ads", "meta ads", "appsflyer", "attribution", "git"],
