@@ -1,0 +1,52 @@
+name: One-Time Oct 18 Enrollment
+
+on:
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'Time slot: 0900, 1000, or 1100'
+        required: true
+        default: '0900'
+      dry_run:
+        description: 'Dry run - check availability without enrolling'
+        required: false
+        default: 'false'
+
+jobs:
+  enroll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run one-time Oct 18 enrollment
+        env:
+          ARBOX_USER_EMAIL: ${{ secrets.ARBOX_USER_EMAIL }}
+          ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+          SLOT: ${{ github.event.inputs.slot }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: node arbox/one-time-oct18.js
+
+      - name: Notify on crash
+        if: failure()
+        env:
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+        run: |
+          node -e "
+            import('../shared/push-notification.js').then(m =>
+              m.sendPushNotification(
+                process.env.ALERTZY_ACCOUNT_KEY,
+                '⚠️ שגיאה בסקריפט',
+                'הסקריפט קרס עבור סלוט ${{ github.event.inputs.slot }} — בדקי GitHub Actions'
+              )
+            )
+          "
