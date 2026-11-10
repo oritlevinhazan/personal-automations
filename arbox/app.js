@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { createEnrollmentJobs, envokeJobs } from "./lib/arbox.js";
+import { loginArbox, enrollDay } from "./lib/arbox.js";
 import { sendPushNotification } from "../shared/push-notification.js";
 import config from "./data/config.js";
 
@@ -26,93 +26,75 @@ const getMillisUntil = (timeStr) => {
     return target - israelTime;
 };
 
-const REGISTER_TIME = process.env.REGISTER_TIME || "16:00:10";
+// The schedule is published at 16:00 sharp. We log in beforehand, start polling a couple of seconds
+// early, and enroll each day the moment its schedule appears (all days run in parallel).
+const REGISTER_TIME = process.env.REGISTER_TIME || "16:00:00";
+const EARLY_START_SECONDS = 2;
+const POLL_SECONDS = 60;
 const RETRY_TIMES = ["16:02:00", "16:05:00"];
-const PREPARE_SECONDS = 300;
+const DAYS = [0, 2, 4];
+const DAY_NAMES = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
 const SKIP_WAIT = process.env.SKIP_WAIT === "true";
 const DRY_RUN = process.env.DRY_RUN === "true";
 
+console.log("Logging in...");
+await loginArbox();
+
 if (!SKIP_WAIT) {
-    const ms = getMillisUntil(REGISTER_TIME) - PREPARE_SECONDS * 1000;
+    const ms = getMillisUntil(REGISTER_TIME) - EARLY_START_SECONDS * 1000;
     if (ms > 0) {
-        console.log(`Waiting ${Math.round(ms / 1000)} seconds to prepare jobs...`);
+        console.log(`Waiting ${Math.round(ms / 1000)} seconds until registration opens...`);
         await wait(ms);
     }
 }
 
-console.log("Preparing jobs...");
-let result = await createEnrollmentJobs();
+console.log("Enrolling (all days in parallel)...");
+const pollUntil = SKIP_WAIT ? 0 : Date.now() + POLL_SECONDS * 1000;
+const outcomes = {};
+const apply = (results) => results.forEach((r) => (outcomes[r.day] = r));
+apply(await Promise.all(DAYS.map((d) => enrollDay(d, { dryRun: DRY_RUN, pollUntil }))));
 
-if (!SKIP_WAIT) {
-    const msToRegister = getMillisUntil(REGISTER_TIME);
-    if (msToRegister > 60 * 1000) {
-        console.log(`Waiting ${Math.round(msToRegister / 1000)} seconds to enroll...`);
-        await wait(msToRegister);
+// Retry only days whose schedule still wasn't published
+for (const retryTime of RETRY_TIMES) {
+    const pending = DAYS.filter((d) => outcomes[d].status === "notPublished");
+    if (pending.length === 0) break;
+    const names = pending.map((d) => DAY_NAMES[d]).join(", ");
+    if (alertzyAccountKey && !DRY_RUN) {
+        await sendPushNotification(alertzyAccountKey, "⏳ מנסה שוב...", `לוח זמנים טרם פורסם: ${names}\nמנסה שוב ב-${retryTime.substring(0, 5)}...`);
     }
-}
-
-console.log("Enrolling...");
-const allSucceeded = [];
-const allFailed = [];
-
-const enrollResult = await envokeJobs(DRY_RUN);
-allSucceeded.push(...enrollResult.succeeded);
-allFailed.push(...enrollResult.failed);
-
-// Retry only if schedule wasn't published yet — full/not-found don't benefit from retrying
-let daysToRetry = [...new Set([...result.notPublished])];
-
-for (let i = 0; i < RETRY_TIMES.length; i++) {
-    if (daysToRetry.length === 0) break;
-
-    const retryTime = RETRY_TIMES[i];
-    const nextRetryTime = RETRY_TIMES[i + 1];
-    const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
-    const retryDayNames = daysToRetry.map(d => dayNames[d] || d).join(", ");
-
-    if (alertzyAccountKey) {
-        const retryMsg = nextRetryTime
-            ? `לוח זמנים טרם פורסם: ${retryDayNames}\nמנסה שוב ב-${nextRetryTime.substring(0, 5)}...`
-            : `לוח זמנים טרם פורסם: ${retryDayNames}\nניסיון אחרון...`;
-        await sendPushNotification(alertzyAccountKey, "⏳ מנסה שוב...", retryMsg);
-    }
-
     if (!SKIP_WAIT) {
-        const msToRetry = getMillisUntil(retryTime);
-        if (msToRetry > 0) {
-            console.log(`Waiting ${Math.round(msToRetry / 1000)} seconds to retry for days: ${retryDayNames}...`);
-            await wait(msToRetry);
+        const ms = getMillisUntil(retryTime);
+        if (ms > 0) {
+            console.log(`Waiting ${Math.round(ms / 1000)} seconds to retry for days: ${names}...`);
+            await wait(ms);
         }
     }
-
-    console.log(`Retrying for days: ${retryDayNames}...`);
-    result = await createEnrollmentJobs(daysToRetry);
-    daysToRetry = [...new Set([...result.notPublished])];
-    const retryEnroll = await envokeJobs(DRY_RUN);
-    allSucceeded.push(...retryEnroll.succeeded);
-    allFailed.push(...retryEnroll.failed);
+    console.log(`Retrying for days: ${names}...`);
+    apply(await Promise.all(pending.map((d) => enrollDay(d, { dryRun: DRY_RUN, pollUntil: 0 }))));
 }
 
-// Send one consolidated final notification
+// Build one consolidated message
+const lines = [];
+for (const d of DAYS) {
+    const o = outcomes[d];
+    const day = DAY_NAMES[d];
+    for (const f of o.failures) lines.push(`❌ ${f}`);
+    if (o.status === "enrolled") {
+        lines.push(`✅ ${day}: ${o.label}`);
+        if (o.full.length) lines.push(`⏳ ${day}: ${o.full.join(", ")} מלא — הירשמי ידנית לרשימת המתנה`);
+    } else if (o.status === "full") {
+        lines.push(`⏳ ${day}: הכל מלא (${o.full.join(", ")}) — הירשמי ידנית להמתנה`);
+    } else if (o.status === "notFound") {
+        lines.push(`⚠️ ${day}: שיעורים לא נמצאו`);
+    } else {
+        lines.push(`⚠️ ${day}: לוח לא פורסם`);
+    }
+}
+console.log(lines.join("\n"));
+
 if (!DRY_RUN && alertzyAccountKey) {
-    const dayNames = { 0: "ראשון", 2: "שלישי", 4: "חמישי" };
-    const lines = [];
-
-    for (const s of allSucceeded) lines.push(`✅ ${s}`);
-    for (const f of allFailed) lines.push(`❌ ${f}`);
-
-    const fullNames = result.full.map(d => dayNames[d] || d).join(", ");
-    const fullWithFallbackNames = result.fullWithFallback.map(d => dayNames[d] || d).join(", ");
-    const notFoundNames = result.notFound.map(d => dayNames[d] || d).join(", ");
-    const notPublishedNames = result.notPublished.map(d => dayNames[d] || d).join(", ");
-
-    if (fullNames) lines.push(`⏳ מלא — הירשמי ידנית להמתנה: ${fullNames}`);
-    if (fullWithFallbackNames) lines.push(`⏳ מלא ב-8 — הירשמי ידנית להמתנה: ${fullWithFallbackNames}`);
-    if (notFoundNames) lines.push(`⚠️ שיעורים לא נמצאו: ${notFoundNames}`);
-    if (notPublishedNames) lines.push(`⚠️ לוח לא פורסם: ${notPublishedNames}`);
-
-    const title = allSucceeded.length > 0 ? "✅ הרישום הסתיים" : "❌ הרישום הסתיים";
-    await sendPushNotification(alertzyAccountKey, title, lines.join("\n") || "לא היו שיעורים לרישום");
+    const anyEnrolled = DAYS.some((d) => outcomes[d].status === "enrolled");
+    await sendPushNotification(alertzyAccountKey, anyEnrolled ? "✅ הרישום הסתיים" : "❌ הרישום הסתיים", lines.join("\n"));
 }
 
 console.log("Done!");

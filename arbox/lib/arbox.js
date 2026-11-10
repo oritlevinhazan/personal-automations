@@ -17,6 +17,7 @@ const {
 
 // global vars
 let jobs = [];
+let cachedLocationId;
 
 let user = {
 	creds: {
@@ -238,10 +239,12 @@ const getBoxLocationsIdFirst = async (token) => {
 const getArboxScheduleByDate = async (date) => {
 	const date_normalized = date + "T00:00:00.000Z";
 
-	const locationsData = await getBoxLocationsIdFirst(user.token);
-	const allLocations = locationsData?.data?.flatMap(box => box.locations_box) || [];
-	const myLocation = allLocations.find(loc => loc.id === 21697);
-	const locationsBoxId = myLocation?.id;
+	if (!cachedLocationId) {
+		const locationsData = await getBoxLocationsIdFirst(user.token);
+		const allLocations = locationsData?.data?.flatMap(box => box.locations_box) || [];
+		cachedLocationId = allLocations.find(loc => loc.id === 21697)?.id;
+	}
+	const locationsBoxId = cachedLocationId;
 
 	const info = {
 		from: date_normalized,
@@ -272,6 +275,105 @@ const getArboxScheduleByDate = async (date) => {
 	} catch (e) {
 		console.log("Issue with getting a schedule.");
 	}
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getNextDateForDay = (dayOfWeek) => {
+	const today = new Date();
+	const daysUntil = (dayOfWeek - today.getDay() + 7) % 7 || 7;
+	return format(addDays(today, daysUntil), "yyyy-MM-dd");
+};
+
+const insertEnrollment = async (scheduleId) => {
+	try {
+		const response = await fetch(
+			"https://apiappv2.arboxapp.com/api/v2/scheduleUser/insert",
+			{
+				method: "POST",
+				headers: {
+					Accept: "application/json, text/plain, */*",
+					"Content-Type": "application/json",
+					accesstoken: user.token,
+					refreshtoken: user.refreshToken,
+				},
+				body: JSON.stringify({
+					extras: null,
+					membership_user_id: user.membership_id,
+					schedule_id: scheduleId,
+				}),
+			}
+		);
+		const data = await response.json();
+		if (response.status === 200) return { ok: true };
+		const raw = data.error?.messageToUser || data.message;
+		const reason = Array.isArray(raw)
+			? raw[0]?.message || JSON.stringify(raw[0])
+			: typeof raw === "string"
+			? raw
+			: JSON.stringify(raw);
+		return { ok: false, reason };
+	} catch (e) {
+		return { ok: false, reason: "error" };
+	}
+};
+
+// Enrolls a single day end-to-end: polls until the schedule is published (until `pollUntil`, epoch ms),
+// then walks the day's slots in priority order and enrolls in the first one with free places.
+// Days are independent, so callers run all days in parallel.
+export const enrollDay = async (day, { dryRun = false, pollUntil = 0 } = {}) => {
+	if (!user.token) await loginArbox();
+	const date = getNextDateForDay(day);
+
+	let boxSchedule;
+	while (true) {
+		boxSchedule = await getArboxScheduleByDate(date);
+		if (boxSchedule?.length > 0 || Date.now() >= pollUntil) break;
+		await sleep(300);
+	}
+	if (!boxSchedule || boxSchedule.length === 0) {
+		console.log("Schedule not published yet for " + date);
+		return { day, date, status: "notPublished", full: [], failures: [] };
+	}
+
+	const full = [];
+	const failures = [];
+	const tried = new Set();
+	for (const slot of scheduleClasses.filter((c) => c.dayOfWeek === day)) {
+		const matches = boxSchedule.filter(
+			(b) =>
+				b.time === slot.start_time &&
+				b.box_categories.name.trim().toLowerCase().includes(slot.class_name.toLowerCase())
+		);
+		if (matches.length === 0) {
+			console.log(`${date}: no ${slot.class_name} class at ${slot.start_time}`);
+			continue;
+		}
+		for (const cls of matches) {
+			if (tried.has(cls.id)) continue;
+			tried.add(cls.id);
+			const label = `${slot.class_name} ${slot.start_time} (${date})`;
+			const slotName = `${slot.start_time} ${slot.class_name}`;
+			if (!(cls.free > 0)) {
+				console.log(`${date}: class full at ${slotName}`);
+				full.push(slotName);
+				continue;
+			}
+			if (dryRun) {
+				console.log(`[DRY RUN] Would enroll in ${label}`);
+				return { day, date, status: "enrolled", label, full, failures };
+			}
+			const res = await insertEnrollment(cls.id);
+			if (res.ok) {
+				console.log(`Enrolled successfully: ${label}`);
+				return { day, date, status: "enrolled", label, full, failures };
+			}
+			console.log(`${label}: ${res.reason}`);
+			failures.push(`${label}: ${res.reason}`);
+			full.push(slotName); // lost the race / unavailable -> treat like full and try the next slot
+		}
+	}
+	return { day, date, status: full.length ? "full" : "notFound", full, failures };
 };
 
 const addJob = (newJobData) => {
