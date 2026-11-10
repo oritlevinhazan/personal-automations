@@ -1,0 +1,87 @@
+name: Enrollment Checker
+
+# Runs right after the weekly enrollment finishes (workflow_run), plus a safety-net schedule that
+# catches "the enrollment never started". Both are gated to Thursday 16:05-17:00 Israel time so
+# manual/test runs of main.yml don't trigger it. Use workflow_dispatch with force=true to test.
+on:
+  workflow_run:
+    workflows: ["Auto Enroll Arbox"]
+    types: [completed]
+  schedule:
+    - cron: "10 13 * * 4"   # 16:10 Israel (summer)
+    - cron: "10 14 * * 4"   # 16:10 Israel (winter)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Skip the Thursday-time gate (for testing)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Gate on Israel time
+        id: gate
+        run: |
+          DOW=$(TZ=Asia/Jerusalem date +%u); HM=$(TZ=Asia/Jerusalem date +%H%M)
+          if [ "${{ github.event.inputs.force }}" = "true" ] || { [ "$DOW" = "4" ] && [ "$HM" -ge 1550 ] && [ "$HM" -le 1700 ]; }; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Outside the Thursday enrollment window, skipping."; echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip scheduled run if the enrollment already ran today (workflow_run handles that)
+        if: steps.gate.outputs.go == 'true' && github.event_name == 'schedule'
+        id: ran
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          N=$(gh run list --repo "${{ github.repository }}" --workflow main.yml --created "$(date -u +%F)" --json databaseId --jq length)
+          if [ "$N" -gt 0 ]; then echo "Enrollment ran today; workflow_run will check it."; echo "skip=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
+        with:
+          node-version: '20'
+      - name: Install
+        if: steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
+        run: npm install && npm install -g @anthropic-ai/claude-code
+
+      - name: Run checker agent
+        if: steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
+        id: agent
+        continue-on-error: true
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ARBOX_USER_EMAIL: ${{ secrets.ARBOX_USER_EMAIL }}
+          ARBOX_USER_PASSWORD: ${{ secrets.ARBOX_USER_PASSWORD }}
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "enroll-checker"; git config user.email "enroll-checker@users.noreply.github.com"
+          claude -p "$(cat .github/checker-prompt.md)" --max-turns 30 \
+            --allowedTools "Read" "Grep" "Glob" "Edit" "Write" \
+              "Bash(gh run:*)" "Bash(gh workflow run:*)" "Bash(gh pr create:*)" \
+              "Bash(node arbox/check-enrollments.js)" "Bash(node arbox/enroll-now.js:*)" \
+              "Bash(git checkout -b fix/*)" "Bash(git add:*)" "Bash(git commit:*)" "Bash(git push origin fix/*)" \
+              "Bash(sleep:*)"
+
+      - name: Notify
+        if: always() && steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
+        env:
+          ALERTZY_ACCOUNT_KEY: ${{ secrets.ALERTZY_ACCOUNT_KEY }}
+        run: |
+          if [ -s checker-result.txt ]; then
+            node shared/notify.js "בדיקת רישום" "$(cat checker-result.txt)"
+          else
+            node shared/notify.js "❌ בדיקת הרישום לא הצליחה" "הבודק האוטומטי לא הצליח לרוץ (טוקן/מגבלת שימוש?). בדקי ידנית את הרישום לראשון, שלישי וחמישי. ריצה: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          fi

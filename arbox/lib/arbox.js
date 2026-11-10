@@ -336,6 +336,16 @@ export const enrollDay = async (day, { dryRun = false, pollUntil = 0 } = {}) => 
 		return { day, date, status: "notPublished", full: [], failures: [] };
 	}
 
+	// Safety: never double-book a day (e.g. manual registration, or a checker/retry re-run)
+	const alreadyBooked = boxSchedule.find(
+		(b) => b.user_booked && /strength|power/i.test(b.box_categories?.name || "")
+	);
+	if (alreadyBooked) {
+		const label = `${alreadyBooked.box_categories.name.trim()} ${alreadyBooked.time} (${date})`;
+		console.log(`Already booked: ${label}`);
+		return { day, date, status: "enrolled", label, full: [], failures: [], already: true };
+	}
+
 	const full = [];
 	const failures = [];
 	const tried = new Set();
