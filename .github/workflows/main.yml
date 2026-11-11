@@ -1,5 +1,8 @@
 name: Auto Enroll Arbox
 
+# Shown as the run title; the enrollment checker reads dry_run from it.
+run-name: Enroll (dry_run=${{ github.event.inputs.dry_run || 'false' }}, skip_wait=${{ github.event.inputs.skip_wait || 'false' }})
+
 on:
   workflow_dispatch:       # Triggered by cron-job.org every Thursday at 13:00 UTC (16:00 Israel time)
     inputs:
