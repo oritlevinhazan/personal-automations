@@ -58,7 +58,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
         with:
-          node-version: '20'
+          node-version: '18'
       - name: Install
         if: steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
         run: npm install && npm install -g @anthropic-ai/claude-code
