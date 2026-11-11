@@ -75,12 +75,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "enroll-checker"; git config user.email "enroll-checker@users.noreply.github.com"
-          claude -p "$(cat .github/checker-prompt.md)" --max-turns 30 \
+          claude -p "$(cat .github/checker-prompt.md)" --max-turns 60 --output-format stream-json --verbose \
             --allowedTools "Read" "Grep" "Glob" "Edit" "Write" \
               "Bash(gh run:*)" "Bash(gh workflow run:*)" "Bash(gh pr create:*)" \
               "Bash(node arbox/check-enrollments.js)" "Bash(node arbox/enroll-now.js:*)" \
               "Bash(git checkout -b fix/*)" "Bash(git add:*)" "Bash(git commit:*)" "Bash(git push origin fix/*)" \
-              "Bash(sleep:*)"
+              "Bash(sleep:*)" > agent.jsonl
+          # show what the agent did (tool calls) + its final message, without dumping everything
+          jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | "TOOL \(.name): \(.input | tostring | .[0:160])"' agent.jsonl || true
+          jq -r 'select(.type=="result") | "RESULT: \(.subtype) turns=\(.num_turns) \(.result // "" | .[0:600])"' agent.jsonl || true
 
       - name: Notify
         if: always() && steps.gate.outputs.go == 'true' && steps.ran.outputs.skip != 'true'
